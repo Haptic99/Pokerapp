@@ -75,6 +75,7 @@ async def handle_client(websocket):
                 elif data.get("command") == "update_game_time":
                     GameTimeData.minute = data["game_time_minute"]
                     GameTimeData.second = data["game_time_second"]
+                    GameTimeData.is_running = data["is_running"]
                     await broadcast_game_status()
 
 

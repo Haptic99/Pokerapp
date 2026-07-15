@@ -419,13 +419,9 @@ class AdminWindow(Gtk.Window):
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
-        self.update_blinds_table(small_blind, big_blind)
-        if self.poker_interface:
-            self.poker_interface.update_blinds_in_table(small_blind, big_blind)
-        asyncio.run_coroutine_threadsafe(
-            self.send_update_blinds(small_blind, big_blind),
-            self.poker_interface.loop
-        )
+        blind_data.small_blind = minute
+        blind_data.big_blind.second = second
+    
 
     def on_timer_values_confirmed(self, minute, second):
         print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
@@ -464,9 +460,14 @@ class AdminWindow(Gtk.Window):
         except Exception as e:
             print(f"⚠ Fehler beim Senden des Timers: {e}")
 
-    def update_blinds_table(self, small_blind, big_blind):
-        self.blind_labels["Small Blind"].set_text(small_blind)
-        self.blind_labels["Big Blind"].set_text(big_blind)
+    def update_blinds_table(self):
+        smallBlind = blind_data.small_blind if blind_data.small_blind is not None else 0
+        bigBlind = blind_data.big_blind if blind_data.big_blind is not None else 0
+        
+        if "Small Blind" in self.timer_labels:
+            self.timer_labels["Small Blind"].set_text(smallBlind)
+        if "Big Blind" in self.timer_labels:
+            self.timer_labels["Big Blind"].set_text(bigBlind)
 
     def update_timer_table(self):
         set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0

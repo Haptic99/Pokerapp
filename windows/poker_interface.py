@@ -11,6 +11,7 @@ from utils.helpers import load_css, set_background_image
 from utils.resources import get_image_path
 from data.blind_data import BlindData
 from data.timer_data import TimerData
+from data.game_time_data import GameTimeData
 from windows.admin_window import AdminWindow
 from windows.poker_hands_window import PokerHandsWindow
 
@@ -68,6 +69,9 @@ class PokerInterface(Gtk.Window):
 
         # Timer starten
         self.start_timer()
+
+        # Timer starten
+        self.start_game_time_timer()
 
     def create_welcome_screen(self):
         """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
@@ -410,6 +414,10 @@ class PokerInterface(Gtk.Window):
     def start_timer(self):
         """Startet den Timer im Poker-Interface."""
         GLib.timeout_add_seconds(1, self.update_timer)
+        
+    def start_game_time_timer(self):
+        """Startet die Spielzeit im Poker-Interface."""
+        GLib.timeout_add_seconds(1, self.update_total_game_time)
 
     def update_timer(self):
         """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
@@ -419,50 +427,11 @@ class PokerInterface(Gtk.Window):
             self.left_labels["Nächste Blinderhöhung"].set_text(f"{minute:02}:{second:02}")
         return True
 
-    async def listen_for_updates(self):
-        """Empfängt Daten vom Server und aktualisiert das Interface."""
-        uri = "ws://192.168.1.65:8765"  # ggf. anpassen
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(json.dumps({"command": "get_status"}))
-                async for message in websocket:
-                    data = json.loads(message)
-                    self.update_display(data)
-        except Exception as e:
-            print(f"Verbindung zum Server fehlgeschlagen: {e}")
-
-    def update_display(self, data):
-        # Blind-Werte
-        small_blind = data.get("small_blind") or "n.V."
-        big_blind = data.get("big_blind") or "n.V."
-        try:
-            minute = int(data.get("minute") or 0)
-            second = int(data.get("second") or 0)
-        except Exception as e:
-            print("Fehler bei der Umwandlung von minute/second:", e)
-            minute, second = 0, 0
-
-        status_text = "►" if data.get("is_running", False) else "‖"
-
-        if hasattr(self, "left_labels"):
-            if "Small Blind" in self.left_labels:
-                self.left_labels["Small Blind"].set_text(small_blind)
-            if "Big Blind" in self.left_labels:
-                self.left_labels["Big Blind"].set_text(big_blind)
-            if "Nächste Blinderhöhung" in self.left_labels:
-                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
-
-        # Debug-Ausgabe, um zu prüfen, welche Daten empfangen wurden:
-        print("update_display received data:", data)
-
-        # Aktualisiere die Spielzeit in der rechten Tabelle
-        if hasattr(self, "info_labels") and "Spielzeit" in self.info_labels:
-            # Hole die Spielzeitwerte aus den Daten; falls nicht vorhanden, wird 0 genutzt.
-            game_time_minute = data.get("game_time_minute")
-            game_time_second = data.get("game_time_second")
-            if game_time_minute is None or game_time_second is None:
-                print("Warnung: Spielzeitwerte fehlen in den empfangenen Daten!")
-            game_time = f"{int(game_time_minute or 0):02}:{int(game_time_second or 0):02}"
-            self.info_labels["Spielzeit"].set_text(game_time)
-
+    def update_total_game_time(self):
+        if GameTimeData.is_running:
+            game_time_minute = int(GameTimeData.minute) if GameTimeData.minute is not None else 0
+            game_time_second = int(GameTimeData.second) if GameTimeData.second is not None else 0
+            # Angenommen, du hast das Label in self.info_labels["Spielzeit"] abgelegt:
+            self.info_labels["Spielzeit"].set_text(f"{game_time_minute:02}:{game_time_second:02}")
+        return True
 
