@@ -27,8 +27,6 @@ class AdminWindow(Gtk.Window):
         if self.poker_interface:
             self.set_transient_for(self.poker_interface)  
 
-        self.set_modal(True)
-
         # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
 
@@ -105,14 +103,17 @@ class AdminWindow(Gtk.Window):
 
     def open_player_position_window(self, widget):
         """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten."""
-        if self.player_window:
+        # Prüfe, ob das Fenster bereits geöffnet ist
+        if hasattr(self, "player_window") and self.player_window:
             self.player_window.present()
             return
 
+        # Neues Spielerplatzierungsfenster erstellen
         self.player_window = PlayerPositionWindow([])
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
 
+        # Fenster mit Daten aktualisieren
         self.update_player_window()
 
     def on_player_window_closed(self, widget):

@@ -413,11 +413,6 @@ class PokerInterface(Gtk.Window):
         """Setzt die Referenz zurück, wenn das Admin-Fenster geschlossen wird."""
         self.admin_window = None
 
-
-    def on_admin_window_closed(self, widget):
-        """Setzt die Referenz auf None, wenn das Admin-Fenster geschlossen wird."""
-        self.admin_window = None
-
     def update_blinds_in_table(self, small_blind, big_blind):
         """Aktualisiert die Blinds in der linken Tabelle."""
         self.left_labels["Small Blind"].set_text(small_blind)
