@@ -459,8 +459,8 @@ class AdminWindow(Gtk.Window):
                 GameTimeData.second = 0
                 GameTimeData.minute += 1
 
-        # Wähle das Symbol: ► wenn aktiv, ‖ wenn pausiert
-        status_symbol = "►" if GameTimeData.is_running else "‖"
+        # Wähle das Symbol: "" wenn aktiv, ‖ wenn pausiert
+        status_symbol = "" if GameTimeData.is_running else "‖"
         new_game_time = f"{status_symbol} {GameTimeData.minute:02}:{GameTimeData.second:02}"
         self.game_time_labels["Spielzeit"].set_text(new_game_time)
 
@@ -607,7 +607,7 @@ class AdminWindow(Gtk.Window):
     def update_all_timer_displays(self):
             minute = int(TimerData.minute) if TimerData.minute is not None else 0
             second = int(TimerData.second) if TimerData.second is not None else 0
-            status_text = "►" if TimerData.is_running else "‖"
+            status_text = "" if TimerData.is_running else "‖"
 
             if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
                 self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")

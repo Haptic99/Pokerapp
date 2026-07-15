@@ -466,17 +466,6 @@ class TimerSettingWindow(Gtk.Window):
         self.enable_input_fields()
         self.reset_timer_labels()
 
-        # Optional: Benachrichtigung anzeigen
-        dialog = Gtk.MessageDialog(
-            transient_for=self,
-            flags=0,
-            message_type=Gtk.MessageType.INFO,
-            buttons=Gtk.ButtonsType.OK,
-            text="Timer abgelaufen!",
-        )
-        dialog.format_secondary_text("Die eingestellte Zeit ist abgelaufen.")
-        dialog.run()
-        dialog.destroy()
 
     def disable_input_fields(self):
         """Deaktiviert die Eingabefelder und entfernt deren Fokus."""
