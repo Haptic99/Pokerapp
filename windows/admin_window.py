@@ -84,6 +84,9 @@ class AdminWindow(Gtk.Window):
         player_position_button = Gtk.Button(label="Spielerplatzierung")
         player_position_button.set_size_request(165, 40)
         player_position_button.connect("clicked", self.open_player_position_window)
+        player_position_button.connect("enter-notify-event", self.on_hover)
+        player_position_button.connect("leave-notify-event", self.on_leave)
+        player_position_button.get_style_context().add_class("button-custom")
         self.add(player_position_button)
         self.fixed.put(player_position_button, 30, 220)
 
