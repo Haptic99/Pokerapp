@@ -9,24 +9,7 @@ from zeroconf import Zeroconf, ServiceBrowser
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
 from windows.poker_interface import PokerInterface
-
-
-class MyListener:
-    """Listener für Zeroconf, um den Poker-Server zu entdecken."""
-    def __init__(self):
-        self.server_address = None
-
-    def remove_service(self, zeroconf, type, name):
-        pass  # Keine Aktion erforderlich, wenn ein Service entfernt wird
-
-    def add_service(self, zeroconf, type, name):
-        """Wird aufgerufen, wenn ein Dienst gefunden wird."""
-        info = zeroconf.get_service_info(type, name)
-        if info:
-            addr = socket.inet_ntoa(info.addresses[0])
-            print(f"Gefundener Server: {name} unter {addr}:{info.port}")
-            self.server_address = (addr, info.port)
-
+from utils.zeroconf_utils import MyListener
 
 class PokerAdminClient(PokerInterface):
     """Der Poker-Admin-Client."""
@@ -79,7 +62,7 @@ class PokerAdminClient(PokerInterface):
         while True:
             try:
                 async with websockets.connect(uri) as websocket:
-                    print(f"🔗 Verbunden mit dem Server: {uri}")
+                    print(f"Verbunden mit dem Server: {uri}")
                     await websocket.send(json.dumps({"command": "get_status"}))
                     async for message in websocket:
                         data = json.loads(message)
@@ -121,7 +104,7 @@ class PokerAdminClient(PokerInterface):
         try:
             async with websockets.connect(uri) as websocket:
                 await websocket.send(json.dumps({"command": command, **payload}))
-                print(f"🔄 Update an Server gesendet: {command}, {payload}")
+                print(f"Update an Server gesendet: {command}, {payload}")
         except Exception as e:
             print(f"⚠ Fehler beim Senden eines Updates: {e}")
 

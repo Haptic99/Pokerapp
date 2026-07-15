@@ -223,8 +223,6 @@ class BlindAdjustmentWindow(Gtk.Window):
         # Werte in BlindData speichern
         BlindData.small_blind = small_blind
         BlindData.big_blind = big_blind
-        self.confirm_callback(small_blind, big_blind)
-
 
         # Callback aufrufen, wenn vorhanden
         if self.confirm_callback:

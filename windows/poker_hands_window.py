@@ -44,8 +44,7 @@ class PokerHandsWindow(Gtk.Window):
         fixed = Gtk.Fixed()
         overlay.add_overlay(fixed)
         fixed.put(close_button, 658, 416)
-
-        self.connect("key-press-event", self.on_key_press)
+        
     
     def on_key_press(self, widget, event):
         """Keybindings für Escape und F11 im Poker Hands Fenster."""

@@ -10,23 +10,8 @@ from zeroconf import Zeroconf, ServiceBrowser
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
 from windows.poker_interface import PokerInterface  # Nutzt das gleiche Interface
+from utils.zeroconf_utils import MyListener
 
-
-class MyListener:
-    """Listener für Zeroconf, um den Poker-Server zu entdecken."""
-    def __init__(self):
-        self.server_address = None
-
-    def remove_service(self, zeroconf, type, name):
-        pass  # Keine Aktion erforderlich, wenn ein Service entfernt wird
-
-    def add_service(self, zeroconf, type, name):
-        """Wird aufgerufen, wenn ein Dienst gefunden wird."""
-        info = zeroconf.get_service_info(type, name)
-        if info:
-            addr = socket.inet_ntoa(info.addresses[0])
-            print(f"Gefundener Server: {name} unter {addr}:{info.port}")
-            self.server_address = (addr, info.port)
 
 
 class PokerClient(PokerInterface):

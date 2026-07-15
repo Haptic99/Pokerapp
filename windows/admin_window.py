@@ -56,9 +56,6 @@ class AdminWindow(Gtk.Window):
         self.start_admin_timer()
 
 
-
-
-
     def create_ui(self):
         # "Blinds anpassen" Button
         adjust_blinds_button = Gtk.Button(label="Blinds anpassen")
@@ -85,7 +82,6 @@ class AdminWindow(Gtk.Window):
         player_position_button.connect("enter-notify-event", self.on_hover)
         player_position_button.connect("leave-notify-event", self.on_leave)
         player_position_button.get_style_context().add_class("button-custom")
-        self.add(player_position_button)
         self.fixed.put(player_position_button, 30, 220)
 
         # Tabelle für Blinds erstellen
@@ -100,86 +96,6 @@ class AdminWindow(Gtk.Window):
         back_button.connect("clicked", self.on_back_button_click)
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
-
-    def open_player_position_window(self, widget):
-        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten."""
-        # Prüfe, ob das Fenster bereits geöffnet ist
-        if hasattr(self, "player_window") and self.player_window:
-            self.player_window.present()
-            return
-
-        # Neues Spielerplatzierungsfenster erstellen
-        self.player_window = PlayerPositionWindow([])
-        self.player_window.connect("destroy", self.on_player_window_closed)
-        self.player_window.show_all()
-
-        # Fenster mit Daten aktualisieren
-        self.update_player_window()
-
-    def on_player_window_closed(self, widget):
-        """Behandelt das Schließen des Spielerplatzierungsfensters."""
-        print("Spielerplatzierungsfenster geschlossen.")
-        self.player_window = None
-
-        # Entferne den Timer, wenn er noch läuft
-        if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
-            GLib.source_remove(self.update_timer_id)
-            print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
-            self.update_timer_id = None
-
-        # Schließe die WebSocket-Verbindung
-        async def close_websocket():
-            if self.persistent_websocket:
-                try:
-                    await self.persistent_websocket.close()
-                    print("🌐 WebSocket-Verbindung geschlossen.")
-                except Exception as e:
-                    print(f"⚠ Fehler beim Schließen der WebSocket-Verbindung: {e}")
-                finally:
-                    self.persistent_websocket = None
-
-        asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
-
-
-    def update_player_window(self):
-        """Aktualisiert die Spielerplatzierung mit den Live-Daten vom Server."""
-        async def fetch_players():
-            try:
-                server_ip, server_port = self.poker_interface.server_address
-                uri = f"ws://{server_ip}:{server_port}"
-
-                if not self.persistent_websocket:
-                    self.persistent_websocket = await websockets.connect(uri)
-                    print(f"🌐 WebSocket-Verbindung hergestellt: {uri}")
-
-                # Spielerliste vom Server abrufen
-                await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
-                message = await self.persistent_websocket.recv()
-                data = json.loads(message)
-                players = data.get("players", [])
-                print(f"🔄 Spieler erhalten: {players}")
-
-                # Spielerplätze im Fenster aktualisieren
-                GLib.idle_add(self.player_window.update_player_positions, players)
-
-            except Exception as e:
-                print(f"⚠ Fehler beim Abrufen der Spieler: {e}")
-                if self.persistent_websocket:
-                    await self.persistent_websocket.close()
-                    self.persistent_websocket = None
-
-        # Starte den asynchronen Abruf
-        asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
-
-        # Wiederhole das Update alle 5 Sekunden, solange das Fenster offen ist
-        if self.player_window:
-            self.update_timer_id = GLib.timeout_add_seconds(
-                5, lambda: self.update_player_window() or False
-            )
-        return False  # Timer nicht erneut ausführen
-
-
-
 
 
     def create_blinds_table(self):
@@ -225,6 +141,7 @@ class AdminWindow(Gtk.Window):
             self.blinds_table.attach(frame2, 1, row, 1, 1)
 
         self.fixed.put(self.blinds_table, 180, 6)
+
 
     def create_timer_table(self):
         self.timer_table = Gtk.Grid()
@@ -282,29 +199,114 @@ class AdminWindow(Gtk.Window):
         self.fixed.put(self.timer_table, 180, 110)
 
 
-    def update_all_timer_displays(self):
-        minute = int(TimerData.minute) if TimerData.minute is not None else 0
-        second = int(TimerData.second) if TimerData.second is not None else 0
-        status_text = "►" if TimerData.is_running else "‖"
 
-        if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-            self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
 
-        if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
-            self.timer_labels["Momentane Zeit"].set_text(f"{status_text} {minute:02}:{second:02}")
+    def open_player_position_window(self, widget):
+        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten."""
+        # Prüfe, ob das Fenster bereits geöffnet ist
+        if hasattr(self, "player_window") and self.player_window:
+            self.player_window.present()
+            return
+
+        # Neues Spielerplatzierungsfenster erstellen
+        self.player_window = PlayerPositionWindow([])
+        self.player_window.connect("destroy", self.on_player_window_closed)
+        self.player_window.show_all()
+
+        # Fenster mit Daten aktualisieren
+        self.update_player_window()
+
+
+    def on_player_window_closed(self, widget):
+        """Behandelt das Schließen des Spielerplatzierungsfensters."""
+        print("Spielerplatzierungsfenster geschlossen.")
+        self.player_window = None
+
+        # Entferne den Timer, wenn er noch läuft
+        if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
+            GLib.source_remove(self.update_timer_id)
+            print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
+            self.update_timer_id = None
+
+        # Schließe die WebSocket-Verbindung
+        async def close_websocket():
+            if self.persistent_websocket:
+                try:
+                    await self.persistent_websocket.close()
+                    print("WebSocket-Verbindung geschlossen.")
+                except Exception as e:
+                    print(f"⚠ Fehler beim Schließen der WebSocket-Verbindung: {e}")
+                finally:
+                    self.persistent_websocket = None
+
+        asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
+
+
+    def open_blind_adjustment_window(self, widget):
+        blind_window = BlindAdjustmentWindow(self, self.on_blind_values_confirmed)
+        blind_window.show_all()
+
+
+    def open_timer_setting_window(self, widget):
+        timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
+        timer_window.show_all()
+
+
+
+
+    def update_player_window(self):
+        """Aktualisiert die Spielerplatzierung mit den Live-Daten vom Server."""
+        async def fetch_players():
+            try:
+                server_ip, server_port = self.poker_interface.server_address
+                uri = f"ws://{server_ip}:{server_port}"
+
+                if not self.persistent_websocket:
+                    self.persistent_websocket = await websockets.connect(uri)
+                    print(f"WebSocket-Verbindung hergestellt: {uri}")
+
+                # Spielerliste vom Server abrufen
+                await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
+                message = await self.persistent_websocket.recv()
+                data = json.loads(message)
+                players = data.get("players", [])
+                print(f"Spieler erhalten: {players}")
+
+                # Spielerplätze im Fenster aktualisieren
+                GLib.idle_add(self.player_window.update_player_positions, players)
+
+            except Exception as e:
+                print(f"⚠ Fehler beim Abrufen der Spieler: {e}")
+                if self.persistent_websocket:
+                    await self.persistent_websocket.close()
+                    self.persistent_websocket = None
+
+        # Starte den asynchronen Abruf
+        asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
+
+        # Wiederhole das Update alle 5 Sekunden, solange das Fenster offen ist
+        if self.player_window:
+            self.update_timer_id = GLib.timeout_add_seconds(
+                1, lambda: self.update_player_window() or False
+            )
+        return False  # Timer nicht erneut ausführen
+
 
     def start_admin_timer(self):
         GLib.timeout_add_seconds(1, self.update_admin_timer)
 
+
     def update_admin_timer(self):
         if TimerData.is_running:
-            # Hole aktuelle Timer-Werte, setze None-Fallback auf 0
             try:
+                # Aktuelle Timer-Werte abrufen, wobei None-Werte als 0 interpretiert werden
                 current_minute = int(TimerData.minute or 0)
                 current_second = int(TimerData.second or 0)
+                set_minute = int(TimerData.start_minute or 0)
+                set_second = int(TimerData.start_second or 0)
             except Exception as e:
                 print("Fehler beim Umwandeln der Timerwerte:", e)
-                current_minute, current_second = 0, 0
+                current_minute, current_second, set_minute, set_second = 0, 0, 0, 0
 
             # Countdown-Logik
             if current_minute == 0 and current_second == 0:
@@ -314,7 +316,6 @@ class AdminWindow(Gtk.Window):
                 if current_second > 0:
                     current_second -= 1
                 else:
-                    # current_second == 0, aber current_minute > 0
                     current_minute -= 1
                     current_second = 59
 
@@ -322,29 +323,26 @@ class AdminWindow(Gtk.Window):
             TimerData.minute = current_minute
             TimerData.second = current_second
 
-            # Aktualisiere die Anzeige im Admin-Fenster
+            # Aktualisiere das Label für die "Eingestellte Zeit" (Startzeit bleibt unverändert)
+            if hasattr(self, "timer_labels") and "Eingestellte Zeit" in self.timer_labels:
+                new_set_time = f"{set_minute:02}:{set_second:02}"
+                self.timer_labels["Eingestellte Zeit"].set_text(new_set_time)
+
+            # Aktualisiere das Label für die "Momentane Zeit" (aktuelle Countdown-Zeit)
             if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
                 new_time = f"{current_minute:02}:{current_second:02}"
                 self.timer_labels["Momentane Zeit"].set_text(new_time)
 
-            # Sende den neuen Timerwert an den Server, sodass dieser broadcastet
+            # Sende den aktualisierten Timer-Status an den Server
             asyncio.run_coroutine_threadsafe(
-                self.send_update_timer(current_minute, current_second, TimerData.is_running),  # 🔥 Aufruf über self
+                self.send_update_timer(current_minute, current_second, TimerData.is_running),
                 self.poker_interface.loop
             )
-
-        # Diese Methode wird jede Sekunde aufgerufen
+        # Diese Methode wird jede Sekunde erneut aufgerufen
         return True
 
 
 
-    def open_blind_adjustment_window(self, widget):
-        blind_window = BlindAdjustmentWindow(self, self.on_blind_values_confirmed)
-        blind_window.show_all()
-
-    def open_timer_setting_window(self, widget):
-        timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
-        timer_window.show_all()
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
@@ -455,6 +453,17 @@ class AdminWindow(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
+
+    def update_all_timer_displays(self):
+            minute = int(TimerData.minute) if TimerData.minute is not None else 0
+            second = int(TimerData.second) if TimerData.second is not None else 0
+            status_text = "►" if TimerData.is_running else "‖"
+
+            if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
+                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+
+            if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
+                self.timer_labels["Momentane Zeit"].set_text(f"{status_text} {minute:02}:{second:02}")
 
 
 if __name__ == "__main__":

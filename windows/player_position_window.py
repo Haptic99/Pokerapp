@@ -132,16 +132,20 @@ class PlayerPositionWindow(Gtk.Window):
                                 player_label.set_text("Nicht belegt")
 
         def add_close_button(self):
-                """Fügt einen Schließen-Button hinzu."""
-                close_button = Gtk.Button(label="Schließen")
-                close_button.set_size_request(100, 40)
-                # Button horizontal zentrieren, sodass er seine feste Breite behält
-                close_button.set_halign(Gtk.Align.CENTER)
-                close_button.get_style_context().add_class("button-custom")
-                close_button.connect("clicked", self.on_close_button_clicked)
+            """Fügt einen Schließen-Button hinzu."""
+            close_button = Gtk.Button(label="Schließen")
+            close_button.set_size_request(100, 40)
+            close_button.get_style_context().add_class("button-custom")
+            close_button.connect("clicked", self.on_close_button_clicked)
+            
+            # Falls noch kein Fixed-Container existiert, erstelle einen und füge ihn zum Overlay hinzu
+            if not hasattr(self, "fixed"):
+                self.fixed = Gtk.Fixed()
+                self.overlay.add_overlay(self.fixed)
+            
+            # Positioniere den Button genau wie im Admin-Fenster (Beispielkoordinaten)
+            self.fixed.put(close_button, 658, 416)
 
-                # Schließen-Button unten im Hauptcontainer hinzufügen
-                self.main_container.pack_end(close_button, False, False, 10)
 
         def on_close_button_clicked(self, widget):
                 """Schließt das Fenster."""

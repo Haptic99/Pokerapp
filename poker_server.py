@@ -30,8 +30,8 @@ zeroconf = Zeroconf()
 print("Registriere den Zeroconf-Service...")
 zeroconf.register_service(info)
 
-clients = set()  # Liste der verbundenen Clients
-connected_players = []  # Liste der Spielernamen (in Reihenfolge des Logins)
+clients = set()              # Liste der verbundenen Clients
+connected_players = []       # Liste der Spielernamen (in Reihenfolge des Logins)
 
 
 async def handle_client(websocket):
@@ -43,12 +43,18 @@ async def handle_client(websocket):
         async for message in websocket:
             data = json.loads(message)
 
-            # Spielername wird gesendet
+            # Verarbeitung von Join-/Leave-Aktionen
             if data.get("action") == "join":
                 player_name = data.get("name", "Unbekannt")
                 if player_name not in connected_players:
                     connected_players.append(player_name)
                     print(f"✅ Spieler hinzugefügt: {player_name}")
+                    await broadcast_player_list()
+            elif data.get("action") == "leave":
+                player_name = data.get("name")
+                if player_name and player_name in connected_players:
+                    connected_players.remove(player_name)
+                    print(f"❌ Spieler entfernt: {player_name}")
                     await broadcast_player_list()
 
             # Andere Kommandos werden verarbeitet
@@ -68,7 +74,10 @@ async def handle_client(websocket):
     except websockets.exceptions.ConnectionClosed:
         print("❌ Client hat die Verbindung getrennt.")
     finally:
+        # Entferne den Client aus der Clients-Menge
         clients.remove(websocket)
+        # Optional: Falls ein Spielername noch in der Liste ist, könnte hier auch entfernt werden.
+        # Da hier keine Zuordnung von WebSocket zu Spielernamen besteht, muss der Client selbst per "leave" die Entfernung vornehmen.
 
 
 async def send_game_status(websocket):
@@ -90,7 +99,7 @@ async def broadcast_player_list():
         data = {
             "players": connected_players  # Liste der Spieler senden
         }
-        print(f"🔄 Sende aktualisierte Spielerliste: {connected_players}")
+        print(f"Sende aktualisierte Spielerliste: {connected_players}")
         await asyncio.gather(*[client.send(json.dumps(data)) for client in clients])
 
 
@@ -105,7 +114,7 @@ async def broadcast_game_status():
             "is_running": TimerData.is_running,
             "players": connected_players  # Aktuelle Spielerliste hinzufügen
         }
-        print("🔄 Sende aktualisierten Spielstatus:", game_status)
+        print("Sende aktualisierten Spielstatus:", game_status)
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
 
 
@@ -113,7 +122,7 @@ async def main():
     """Startet den WebSocket-Server."""
     try:
         async with websockets.serve(handle_client, "0.0.0.0", port):
-            print(f"🔥 Poker-Server läuft auf Port {port}")
+            print(f"Poker-Server läuft auf Port {port}")
             await asyncio.Future()  # Lässt den Server unbegrenzt laufen
     except Exception as e:
         print(f"❌ Fehler beim Starten des Servers: {e}")
