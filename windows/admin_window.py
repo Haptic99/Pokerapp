@@ -241,53 +241,6 @@ class AdminWindow(Gtk.Window):
         # Positioniere die Tabelle – hier als Beispiel bei (180, 224)
         self.fixed.put(self.game_time_table, 180, 224)
 
-    async def send_start_timer(self, minute, second):
-        server_ip, server_port = self.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-             "command": "start_timer",
-             "minute": minute,
-             "second": second,
-             "is_running": True
-        }
-        try:
-             async with websockets.connect(uri) as websocket:
-                 await websocket.send(json.dumps(message))
-                 print("Start Timer Update gesendet.")
-        except Exception as e:
-             print(f"Fehler beim Senden des Start-Timers: {e}")
-
-    async def send_pause_timer(self, minute, second):
-        server_ip, server_port = self.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-             "command": "pause_timer",
-             "minute": minute,
-             "second": second,
-             "is_running": False
-        }
-        try:
-             async with websockets.connect(uri) as websocket:
-                 await websocket.send(json.dumps(message))
-                 print("Pause Timer Update gesendet.")
-        except Exception as e:
-             print(f"Fehler beim Senden des Pause-Timers: {e}")
-
-    async def send_stop_timer(self, minute, second):
-        server_ip, server_port = self.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-             "command": "stop_timer",
-             "minute": minute,
-             "second": second,
-             "is_running": False
-        }
-        try:
-             async with websockets.connect(uri) as websocket:
-                 await websocket.send(json.dumps(message))
-                 print("Stop Timer Update gesendet.")
-        except Exception as e:
-             print(f"Fehler beim Senden des Stop-Timers: {e}")
 
     def create_timer_table(self):
         self.timer_table = Gtk.Grid()
@@ -415,23 +368,6 @@ class AdminWindow(Gtk.Window):
         )
         return True  # Damit der Timeout-Callback weiterläuft
 
-
-    async def send_update_game_time(self, minute, second):
-        import websockets, json
-        server_ip, server_port = self.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-            "command": "update_game_time",
-            "game_time_minute": minute,
-            "game_time_second": second,
-            "is_running": GameTimeData.is_running
-        }
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(json.dumps(message))
-        except Exception as e:
-            print(f"Error sending game time update: {e}")
-
     def on_blind_values_confirmed(self, small_blind, big_blind):
         from data.blind_data import BlindData  # Sicherstellen, dass BlindData importiert ist
         BlindData.small_blind = small_blind
@@ -530,20 +466,6 @@ class AdminWindow(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
-
-    def update_all_timer_displays(self):
-            minute = int(TimerData.minute) if TimerData.minute is not None else "-"
-            second = int(TimerData.second) if TimerData.second is not None else "-"
-            
-            if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-                if minute == "-":
-                    self.left_labels["Nächste Blinderhöhung"].set_text("minute")
-                else:
-                    status_text = "" if TimerData.is_running else "‖"
-                    self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
-
-            if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
-                self.timer_labels["Momentane Zeit"].set_text(f"{status_text} {minute:02}:{second:02}")
 
 
 if __name__ == "__main__":

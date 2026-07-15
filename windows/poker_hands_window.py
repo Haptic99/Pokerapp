@@ -38,7 +38,7 @@ class PokerHandsWindow(Gtk.Window):
         # Close button
         close_button = Gtk.Button(label="Schliessen")
         close_button.set_size_request(80, 40)
-        close_button.connect("clicked", lambda w: self.close())
+        close_button.connect("clicked", lambda _: self.close())
         close_button.get_style_context().add_class("button-custom")
 
         fixed = Gtk.Fixed()

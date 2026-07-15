@@ -5,7 +5,6 @@ from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
-from utils.helpers import format_timer_with_status
 from data.timer_data import TimerData
 
 class PokerAdminClient(PokerInterface):
@@ -27,21 +26,6 @@ class PokerAdminClient(PokerInterface):
     def update_display(self, data):
         update_client_display(self, data)
 
-    async def send_update_to_server(self, command, payload):
-        """Diese Methode ist jetzt ein Wrapper für die WebSocketClient-Methoden."""
-        if command == "update_blinds":
-            await self.ws_client.send_update_blinds(payload["small_blind"], payload["big_blind"])
-        elif command == "update_timer":
-            await self.ws_client.send_update_timer(payload["minute"], payload["second"], payload["is_running"])
-        elif command == "update_game_time":
-            await self.ws_client.send_update_game_time(
-                payload["game_time_minute"], 
-                payload["game_time_second"], 
-                payload["is_running"]
-            )
-        else:
-            message = {"command": command, **payload}
-            await self.ws_client.send_message(message)
 
 # Am Ende des Dokuments: instanziere den Admin-Client und starte die GUI
 if __name__ == '__main__':

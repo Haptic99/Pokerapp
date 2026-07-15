@@ -68,9 +68,9 @@ class TotalGameTimeWindow(Gtk.Window):
         )
     
         # Buttons mit dem Controller verbinden
-        self.button_start.connect("clicked", lambda w: self.game_timer.start_timer())
-        self.button_pause.connect("clicked", lambda w: self.game_timer.pause_timer())
-        self.button_stop.connect("clicked", lambda w: self.on_stop_button_click)
+        self.button_start.connect("clicked", lambda _: self.game_timer.start_timer())
+        self.button_pause.connect("clicked", lambda _: self.game_timer.pause_timer())
+        self.button_stop.connect("clicked", lambda _: self.on_stop_button_click)
 
     def create_timer_cells(self):
         # Container für die Zeit auf der linken Seite

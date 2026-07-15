@@ -37,7 +37,6 @@ class TimerController:
         # Timer-Status (nur für die lokale UI-Steuerung)
         self.is_running = False
         self.is_paused = False
-        self.timer_stopped = True
         
         # Initial-Zustand aus den globalen Daten laden
         self.load_initial_state()
@@ -120,7 +119,6 @@ class TimerController:
         # Update local status
         self.is_running = True
         self.is_paused = False
-        self.timer_stopped = False
         
         # Update UI
         self.update_ui_for_running_timer()
@@ -159,7 +157,6 @@ class TimerController:
         """Stoppt den Timer vollständig und setzt ihn zurück."""
         self.is_running = False
         self.is_paused = False
-        self.timer_stopped = True
         
         minute = 0
         second = 0

@@ -75,9 +75,9 @@ class TimerSettingWindow(Gtk.Window):
 		)
 
 		# Buttons mit dem Controller verbinden
-		self.button_start.connect("clicked", lambda w: self.blind_timer.start_timer())
-		self.button_pause.connect("clicked", lambda w: self.blind_timer.pause_timer())
-		self.button_stop.connect("clicked", lambda w: self.blind_timer.stop_timer())
+		self.button_start.connect("clicked", lambda _: self.blind_timer.start_timer())
+		self.button_pause.connect("clicked", lambda _: self.blind_timer.pause_timer())
+		self.button_stop.connect("clicked", lambda _: self.blind_timer.stop_timer())
 
 		# WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
 		self.ws_client = WebSocketClient(update_display_callback=self.update_display)
@@ -309,48 +309,6 @@ class TimerSettingWindow(Gtk.Window):
 			self.fullscreen()
 			self.is_fullscreen_mode = True
 
-	def update_timer_display(self):
-		"""
-		Aktualisiert die Timer-Anzeige basierend auf den aktuellen TimerData-Werten.
-		Diese Methode wird periodisch aufgerufen, um die UI zu aktualisieren.
-		"""
-		
-		# Hole die aktuellen Werte aus TimerData
-		current_minute = TimerData.minute if TimerData.minute is not None else "-"
-		current_second = TimerData.second if TimerData.second is not None else "-"
-		
-		# Wenn der Timer läuft oder pausiert ist, aktualisiere die Anzeige
-		# mit den Werten vom Server und stelle sicher, dass die Eingabefelder
-		# deaktiviert sind
-		if TimerData.is_running or TimerData.is_paused:
-			# Aktualisiere die Anzeige mit den Werten vom Server
-			self.label_minute.set_text(f"{int(current_minute):02}")
-			self.label_second.set_text(f"{int(current_second):02}")
-			
-			# Stelle sicher, dass die Eingabefelder deaktiviert sind
-			self.disable_input_fields()
-		
-		# Timer-Steuerungsstatus aktualisieren
-		if TimerData.is_running and not self.blind_timer.is_running:
-			# Timer wurde extern gestartet - UI aktualisieren
-			self.blind_timer.is_running = True
-			self.blind_timer.is_paused = False
-			self.blind_timer.update_ui_for_running_timer()
-		elif not TimerData.is_running and self.blind_timer.is_running:
-			# Timer wurde extern gestoppt oder pausiert
-			self.blind_timer.is_running = False
-			if TimerData.is_paused:
-				self.blind_timer.is_paused = True
-				self.blind_timer.update_ui_for_paused_timer()
-			else:
-				self.blind_timer.timer_stopped = True
-				self.blind_timer.update_ui_for_stopped_timer(current_minute, current_second)
-				# Wenn der Timer gestoppt wurde, aktiviere die Eingabefelder wieder
-				self.enable_input_fields()
-		
-		return True  # Damit der Timer-Callback weiterläuft
-
-
 	def disable_input_fields(self):
 		"""Deaktiviert die Eingabefelder und entfernt deren Fokus."""
 		self.button_minute.set_sensitive(False)
@@ -364,7 +322,3 @@ class TimerSettingWindow(Gtk.Window):
 		self.button_second.set_sensitive(True)
 		self.button_minute.set_can_focus(True)
 		self.button_second.set_can_focus(True)
-
-	def remove_timer_focus(self):
-		"""Entfernt den Fokus von den Timer-Eingabefeldern, indem der Fokus auf den Fixed-Container übergeben wird."""
-		self.fixed.grab_focus()

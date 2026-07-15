@@ -128,7 +128,7 @@ class PokerInterface(Gtk.Window):
         # Aktiviere alle Buttons (nun kann der Spieler interagieren)
         self.enable_buttons()
 
-    def on_name_entered(self, entry):
+    def on_name_entered(self, _):
         """Bei Enter wird die gleiche Logik wie beim Klick auf 'Weiter' ausgeführt."""
         self.on_start_button_clicked(None)
 

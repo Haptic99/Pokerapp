@@ -23,7 +23,6 @@ class WebSocketClient:
         self.server_address = server_address
         self.update_display_callback = update_display_callback
         self.loop = None
-        self.persistent_ws = None
         
         # Wenn keine Server-Adresse angegeben wurde, versuche via Zeroconf zu finden
         if not self.server_address:
@@ -118,28 +117,6 @@ class WebSocketClient:
         }
         return await self.send_message(message)
     
-    async def send_start_timer(self, minute, second):
-        """Sendet den Befehl zum Starten des Timers an den Server."""
-        message = {
-            "command": "start_timer",
-            "minute": minute,
-            "second": second
-        }
-        return await self.send_message(message)
-    
-    async def send_pause_timer(self):
-        """Sendet den Befehl zum Pausieren des Timers an den Server."""
-        message = {
-            "command": "pause_timer"
-        }
-        return await self.send_message(message)
-    
-    async def send_stop_timer(self):
-        """Sendet den Befehl zum Stoppen des Timers an den Server."""
-        message = {
-            "command": "stop_timer"
-        }
-        return await self.send_message(message)
         
     def find_server_via_zeroconf(self):
         """Verwendet Zeroconf, um den Poker-Server zu finden."""

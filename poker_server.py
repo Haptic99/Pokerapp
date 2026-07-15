@@ -72,7 +72,6 @@ async def handle_client(websocket):
     Ein direkter Broadcast erfolgt hier nicht – stattdessen sorgt der update_loop einmal pro Sekunde für die Updates.
     """
     clients.add(websocket)
-    # print(f"✅ Neuer Client verbunden von {websocket.remote_address}")
     try:
         async for message in websocket:
             data = json.loads(message)
@@ -191,7 +190,6 @@ async def broadcast_status():
             "game_time_running": GameTimeData.is_running,
             "players": connected_players
         }
-        # print("Sende aggregierten Spielstatus:", status)
         await asyncio.gather(*[client.send(json.dumps(status)) for client in clients])
 
 async def main():
