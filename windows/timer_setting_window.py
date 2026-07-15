@@ -39,6 +39,8 @@ class TimerSettingWindow(Gtk.Window):
 		self.fixed = Gtk.Fixed()
 		self.overlay.add_overlay(self.fixed)
 
+		self.numpad_buttons = []
+
 		# Zellen für Minuten und Sekunden erstellen
 		self.create_timer_cells()
 
@@ -53,7 +55,6 @@ class TimerSettingWindow(Gtk.Window):
 
 		# Flag, um zu verfolgen, ob eine neue Eingabe begonnen wurde
 		self.new_entry = False
-
 
 		# Bestätigungs-Callback
 		self.confirm_callback = confirm_callback
@@ -75,9 +76,9 @@ class TimerSettingWindow(Gtk.Window):
 		)
 
 		# Buttons mit dem Controller verbinden
-		self.button_start.connect("clicked", lambda _: self.blind_timer.start_timer())
+		self.button_start.connect("clicked", self.on_start_clicked)
 		self.button_pause.connect("clicked", lambda _: self.blind_timer.pause_timer())
-		self.button_stop.connect("clicked", lambda _: self.blind_timer.stop_timer())
+		self.button_stop.connect("clicked", self.on_stop_clicked)
 
 		# WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
 		self.ws_client = WebSocketClient(update_display_callback=self.update_display)
@@ -87,6 +88,37 @@ class TimerSettingWindow(Gtk.Window):
 		
 		# In deiner __init__-Methode, nachdem die Timer-Felder (z. B. self.label_minute und self.label_second) angelegt wurden:
 		GLib.timeout_add_seconds(1, self.update_timer_fields)
+
+	def on_start_clicked(self, _):
+		# Timer (neu) starten — nur bei NEUEM Start die konfigurierte Zeit überschreiben
+		if TimerData.is_paused:
+			# Resume: keine Änderung der Startzeit
+			self.blind_timer.start_timer()
+		else:
+			minute = int(self.label_minute.get_text())
+			second = int(self.label_second.get_text())
+			self.confirm_callback(minute, second)
+			self.blind_timer.start_timer()
+
+		# NumPad deaktivieren
+		for btn in self.numpad_buttons:
+			btn.set_sensitive(False)
+
+		# Nur Pause & Stop aktivieren
+		self.button_pause.set_sensitive(True)
+		self.button_stop.set_sensitive(True)
+
+	def on_stop_clicked(self, _):
+		# Blinds‑Timer stoppen
+		self.blind_timer.stop_timer()
+
+		# Alle NumPad‑Buttons wieder aktivieren
+		for btn in self.numpad_buttons:
+			btn.set_sensitive(True)
+
+		# Pause und Stop bleiben deaktiviert
+		self.button_pause.set_sensitive(False)
+		self.button_stop.set_sensitive(False)
 
 	def update_timer_fields(self):
 		# Nur aktualisieren, wenn der Timer tatsächlich läuft
@@ -105,7 +137,13 @@ class TimerSettingWindow(Gtk.Window):
 			self.button_start.set_sensitive(False)
 			self.button_pause.set_sensitive(True)
 			self.button_stop.set_sensitive(True)
+		elif TimerData.is_paused:
+			# Timer ist pausiert → Stop bleibt aktiv
+			self.button_start.set_sensitive(True)
+			self.button_pause.set_sensitive(False)
+			self.button_stop.set_sensitive(True)
 		else:
+			# Timer ist gestoppt → Stop deaktivieren
 			self.button_start.set_sensitive(True)
 			self.button_pause.set_sensitive(False)
 			self.button_stop.set_sensitive(False)
@@ -202,6 +240,7 @@ class TimerSettingWindow(Gtk.Window):
 				button.connect("clicked", self.on_numpad_button_click)
 
 			grid.attach(button, x, y, 1, 1)
+			self.numpad_buttons.append(button)
 
 	def create_back_button(self):
 		# "Zurück" Button unten rechts hinzufügen

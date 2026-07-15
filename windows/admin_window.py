@@ -386,6 +386,11 @@ class AdminWindow(Gtk.Window):
         TimerData.start_second = second
         TimerData.is_running = True
 
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_timer(minute, second, True),
+            self.poker_interface.loop
+        )
+
     async def send_update_blinds(self, small_blind, big_blind):
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"

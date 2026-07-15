@@ -120,6 +120,10 @@ class TimerController:
         self.is_running = True
         self.is_paused = False
         
+        # *** NEU ***
+        TimerData.start_minute = minute
+        TimerData.start_second = second
+        
         # Update UI
         self.update_ui_for_running_timer()
         

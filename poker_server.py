@@ -176,21 +176,32 @@ async def broadcast_status():
     Hier werden alle Datenfelder zusammengeführt.
     """
     
-    if clients:
-        status = {
-            "small_blind": BlindData.small_blind,
-            "big_blind": BlindData.big_blind,
-            "blind_time_minute": TimerData.minute,
-            "blind_time_second": TimerData.second,
-            "configured_blind_time_minute": TimerData.start_minute,
-            "configured_blind_time_second": TimerData.start_second,
-            "timer_running": TimerData.is_running,
-            "game_time_minute": GameTimeData.minute,
-            "game_time_second": GameTimeData.second,
-            "game_time_running": GameTimeData.is_running,
-            "players": connected_players
-        }
-        await asyncio.gather(*[client.send(json.dumps(status)) for client in clients])
+    if not clients:
+        return
+    
+    status = {
+        "small_blind": BlindData.small_blind,
+        "big_blind": BlindData.big_blind,
+        "blind_time_minute": TimerData.minute,
+        "blind_time_second": TimerData.second,
+        "configured_blind_time_minute": TimerData.start_minute,
+        "configured_blind_time_second": TimerData.start_second,
+        "timer_running": TimerData.is_running,
+        "game_time_minute": GameTimeData.minute,
+        "game_time_second": GameTimeData.second,
+        "game_time_running": GameTimeData.is_running,
+        "players": connected_players
+    }
+    
+    to_remove = set()
+    for client in clients:
+        try:
+            await client.send(json.dumps(status))
+        except websockets.exceptions.ConnectionClosed:
+            to_remove.add(client)
+
+    for client in to_remove:
+        clients.remove(client)
 
 async def main():
     try:
