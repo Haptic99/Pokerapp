@@ -3,10 +3,11 @@
 import asyncio
 import websockets
 import json
-
+from gi.repository import GLib
 
 from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
+from data.blind_data import BlindData
 
 class TimerController:
     """
@@ -40,6 +41,10 @@ class TimerController:
         
         # Initial-Zustand aus den globalen Daten laden
         self.load_initial_state()
+        
+        # Timer-Ablauf-Checker einrichten (nur für Blind-Timer)
+        if self.timer_type == "blind_timer":
+            GLib.timeout_add_seconds(1, self.check_timer_expiration)
 
     def load_initial_state(self):
         """
@@ -122,6 +127,69 @@ class TimerController:
         except Exception as e:
             print(f"Error setting button states: {e}")
 
+    def check_timer_expiration(self):
+        """
+        Überprüft, ob der Blind-Timer abgelaufen ist (0:00) und öffnet in diesem Fall
+        das Blind-Erhöhungsfenster, wenn die Anwendung im Admin-Modus ist.
+        Falls keine Blinds gesetzt sind (Wert ist "00" oder "-"), wird der Timer nur zurückgesetzt.
+        """
+
+        if self.timer_type == "blind_timer" and TimerData.is_running:
+            # Verbesserte Bedingung: Timer ist abgelaufen, wenn Minute und Sekunde 0 sind oder <= 0
+            if (TimerData.minute == 0 and TimerData.second == 0) or (TimerData.minute <= 0 and TimerData.second <= 0):
+                # Timer ist abgelaufen
+                TimerData.is_running = False
+                
+                # Prüfen ob aktuelle Blinds gesetzt sind
+                current_small_blind = BlindData.small_blind
+                current_big_blind = BlindData.big_blind
+                
+                # Wenn Blinds nicht gesetzt sind oder "00" oder "-", Timer nur zurücksetzen
+                if (current_small_blind is None or current_small_blind == "-" or current_small_blind == "0" or 
+                    current_big_blind is None or current_big_blind == "-" or current_big_blind == "0"):
+                    print("Timer abgelaufen, aber keine gültigen Blinds gesetzt. Timer wird zurückgesetzt.")
+                    
+                    # Timer zurücksetzen wie bei Stop-Button
+                    TimerData.is_running = False
+                    TimerData.is_paused = False
+                    TimerData.minute = TimerData.start_minute
+                    TimerData.second = TimerData.start_second
+                    
+                    # UI aktualisieren (falls UI-Elemente vorhanden sind)
+                    if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
+                        GLib.idle_add(self.update_ui_for_stopped_timer, TimerData.start_minute, TimerData.start_second)
+                    
+                    # Server-Update senden
+                    GLib.idle_add(self.send_server_update, TimerData.start_minute, TimerData.start_second, False)
+                else:
+                    # Wenn Blinds gesetzt sind, Blind-Erhöhungsfenster öffnen
+                    print("TIMER ABGELAUFEN: Öffne Blind-Erhöhungsfenster")
+                    
+                    # Debugging für Admin-Fenster-Erkennung
+                    has_admin_parent = hasattr(self.parent, 'is_admin') and self.parent.is_admin
+                    has_admin_grandparent = hasattr(self.parent, 'parent') and hasattr(self.parent.parent, 'is_admin') and self.parent.parent.is_admin
+                    
+                    print(f"Admin parent check: {has_admin_parent}")
+                    print(f"Admin grandparent check: {has_admin_grandparent}")
+                    
+                    # Lokales Import, um Kreisimporte zu vermeiden
+                    from windows.blind_increase_window import BlindIncreaseWindow
+                    
+                    # Direkt das Dialog-Fenster öffnen, auch wenn kein admin_window gefunden wird
+                    admin_window = self.parent
+                    GLib.idle_add(self.open_blind_increase_window, admin_window)
+        
+        # True zurückgeben, damit der Timeout-Callback fortgesetzt wird
+        return True
+
+    def open_blind_increase_window(self, admin_window):
+        """Öffnet das Blind-Erhöhungsfenster"""
+        from windows.blind_increase_window import BlindIncreaseWindow
+        blind_increase_window = BlindIncreaseWindow(admin_window)
+        blind_increase_window.show_all()
+        # Immer False zurückgeben, da diese Methode nur einmal aufgerufen werden soll
+        return False
+
     def start_timer(self):
         """
         Starts the timer by sending a command to the server.
@@ -137,7 +205,8 @@ class TimerController:
         # For game time, we can start at 0:00, but not for blind timer
         if self.timer_type == "blind_timer" and minute == 0 and second == 0:
             print("[ERROR] Cannot start blind timer at 0:00 - please set a valid time first")
-            return
+            # Show error message or visual feedback here if needed
+            return False  # Return False to indicate failure
         
         # Update local status
         self.is_running = True
@@ -162,6 +231,8 @@ class TimerController:
         
         # Send server update with explicit values, not relying on TimerData
         self.send_server_update(minute, second, True)
+        
+        return True  # Return True to indicate success
 
     def pause_timer(self):
         """Pauses the timer."""

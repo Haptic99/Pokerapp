@@ -117,6 +117,13 @@ class WebSocketClient:
         }
         return await self.send_message(message)
     
+    async def send_update_rounds(self, rounds_count):
+        """Sendet aktualisierte Rundenanzahl an den Server."""
+        message = {
+            "command": "update_rounds",
+            "rounds_count": rounds_count
+        }
+        return await self.send_message(message)
         
     def find_server_via_zeroconf(self):
         """Verwendet Zeroconf, um den Poker-Server zu finden."""

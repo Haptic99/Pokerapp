@@ -15,6 +15,7 @@ from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
 from utils.websocket_utils import WebSocketClient
 from utils.display_utils import update_client_display
+from windows.round_management_window import RoundManagementWindow
 
 
 class AdminWindow(Gtk.Window):
@@ -76,6 +77,9 @@ class AdminWindow(Gtk.Window):
         # Spielzeit-Tabelle aktualisieren
         self.update_game_time_table()
         
+        # Runden-Tabelle aktualisieren
+        self.update_rounds_table()
+        
         return True  # Damit der Timer weiterläuft
 
     def update_game_time_table(self):
@@ -86,6 +90,16 @@ class AdminWindow(Gtk.Window):
         
         if "Spielzeit" in self.game_time_labels:
             self.game_time_labels["Spielzeit"].set_text(game_time_str)
+
+    # Neue Methode zur Aktualisierung der Runden-Tabelle:
+    def update_rounds_table(self):
+        from data.round_data import RoundData
+        rounds_count = RoundData.count if RoundData.count is not None else 0
+        
+        if "Anzahl Runden" in self.rounds_labels:
+            # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
+            rounds_text = "-" if rounds_count == 0 else str(rounds_count)
+            self.rounds_labels["Anzahl Runden"].set_text(rounds_text)
 
     def create_ui(self):
         # "Blinds anpassen" Button
@@ -113,6 +127,13 @@ class AdminWindow(Gtk.Window):
         spielzeit_button.get_style_context().add_class("button-custom")
         self.fixed.put(spielzeit_button, 30, 220)  # Position anpassen
 
+        # Button "Rundenzählung"
+        round_management_button = Gtk.Button(label="Rundenzählung")
+        round_management_button.set_size_request(165, 40)
+        round_management_button.connect("clicked", self.open_round_management_window)
+        round_management_button.get_style_context().add_class("button-custom")
+        self.fixed.put(round_management_button, 30, 320)  # Position unterhalb des Spielzeit-Buttons
+
         # "Spielerplatzierung" Button
         player_position_button = Gtk.Button(label="Spielerplatzierung")
         player_position_button.set_size_request(165, 40)
@@ -131,6 +152,9 @@ class AdminWindow(Gtk.Window):
         # Tabelle für Spielzeit erstellen
         self.create_game_time_table()
         
+        # NEUE TABELLE: Tabelle für Runden erstellen
+        self.create_rounds_table()
+        
         # "Zurück" Button unten rechts hinzufügen
         back_button = Gtk.Button(label="Schliessen")
         back_button.set_size_request(100, 40)
@@ -138,6 +162,68 @@ class AdminWindow(Gtk.Window):
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
 
+
+    def create_rounds_table(self):
+        from data.round_data import RoundData
+        self.rounds_table = Gtk.Grid()
+        self.rounds_table.set_row_spacing(5)
+        self.rounds_table.set_column_spacing(10)
+        self.rounds_table.set_margin_top(10)
+        self.rounds_table.set_margin_left(40)
+
+        # Hole die aktuelle Rundenzahl
+        rounds_count = RoundData.count if RoundData.count is not None else 0
+        
+        # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
+        rounds_text = "-" if rounds_count == 0 else str(rounds_count)
+
+        # Daten für die Tabelle - nur noch die Anzahl der Runden
+        data = [
+            ("Anzahl Runden", rounds_text),
+        ]
+
+        self.rounds_labels = {}
+
+        for row, (title, value) in enumerate(data):
+            label_title = Gtk.Label(label=title)
+            label_value = Gtk.Label(label=value)
+            label_title.set_size_request(150, 25)
+            label_value.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_value.set_xalign(1.0)
+            label_value.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_value.get_style_context().add_class("green-text")
+            
+            # Speichere die Labels, damit sie später aktualisiert werden können
+            self.rounds_labels[title] = label_value
+
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+
+            frame_value = Gtk.Frame()
+            frame_value.add(label_value)
+            frame_value.get_style_context().add_class("table-cell")
+
+            self.rounds_table.attach(frame_title, 0, row, 1, 1)
+            self.rounds_table.attach(frame_value, 1, row, 1, 1)
+
+        # Positioniere die Tabelle unterhalb der Spielzeit-Tabelle
+        self.fixed.put(self.rounds_table, 180, 320)
+
+    # Neue Methode für das Öffnen des Rundenverwaltungsfensters:
+    def open_round_management_window(self, widget):
+        """Öffnet das Rundenverwaltungsfenster."""
+        round_window = RoundManagementWindow(self, confirm_callback=self.on_rounds_updated)
+        round_window.show_all()
+
+    # Callback für die Aktualisierung der Rundenzahl:
+    def on_rounds_updated(self, rounds_count):
+        """Callback für Aktualisierungen der Rundenzahl."""
+        if hasattr(self.poker_interface, "info_labels") and "Anzahl Runden" in self.poker_interface.info_labels:
+            self.poker_interface.info_labels["Anzahl Runden"].set_text(str(rounds_count))
 
     def open_total_game_time_window(self, widget):
         # Öffnet das Gesamtspielzeit-Fenster mit einem Dummy-Callback

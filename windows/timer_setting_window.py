@@ -103,13 +103,33 @@ class TimerSettingWindow(Gtk.Window):
 		# Timer (neu) starten — nur bei NEUEM Start die konfigurierte Zeit überschreiben
 		if TimerData.is_paused:
 			# Resume: keine Änderung der Startzeit
-			self.blind_timer.start_timer()
+			timer_started = self.blind_timer.start_timer()
 		else:
 			minute = int(self.label_minute.get_text())
 			second = int(self.label_second.get_text())
+			
+			# Check if timer values are valid (shouldn't be 0:00 for blind timer)
+			if minute == 0 and second == 0:
+				# Optionally show an error message to the user
+				dialog = Gtk.MessageDialog(
+					transient_for=self,
+					flags=0,
+					message_type=Gtk.MessageType.ERROR,
+					buttons=Gtk.ButtonsType.OK,
+					text="Ungültige Timer-Einstellung"
+				)
+				dialog.format_secondary_text("Der Timer kann nicht mit 0:00 gestartet werden. Bitte stellen Sie eine gültige Zeit ein.")
+				dialog.run()
+				dialog.destroy()
+				return  # Exit early without changing UI
+				
 			self.confirm_callback(minute, second)
-			self.blind_timer.start_timer()
-
+			timer_started = self.blind_timer.start_timer()
+		
+		# Only proceed with UI changes if timer was successfully started
+		if not timer_started:
+			return
+			
 		# NumPad deaktivieren
 		for btn in self.numpad_buttons:
 			btn.set_sensitive(False)

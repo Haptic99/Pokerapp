@@ -6,6 +6,7 @@ from zeroconf import Zeroconf, ServiceInfo
 from data.timer_data import TimerData  # Timer-Daten
 from data.blind_data import BlindData  # Blind-Daten
 from data.game_time_data import GameTimeData  # Spielzeit-Daten
+from data.round_data import RoundData 
 
 # Lokale IP-Adresse ermitteln
 hostname = socket.gethostname()
@@ -104,6 +105,8 @@ async def handle_client(websocket):
                 TimerData.is_paused = False
                 TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
                 TimerData.second = TimerData.start_second if TimerData.start_second is not None else "-"
+            elif data.get("command") == "update_rounds":
+                RoundData.count = data["rounds_count"]
 
             # Weitere Befehle zur Aktualisierung einzelner Datenfelder
             if "command" in data:
@@ -190,7 +193,8 @@ async def broadcast_status():
         "game_time_minute": GameTimeData.minute,
         "game_time_second": GameTimeData.second,
         "game_time_running": GameTimeData.is_running,
-        "players": connected_players
+        "players": connected_players,
+        "rounds_count": RoundData.count,
     }
     
     # Eine Kopie des clients-Sets erstellen, um sicher über die ursprünglichen Clients zu iterieren

@@ -34,12 +34,13 @@ GtkWindow {
 /* Allgemeine Stile für Buttons */
 .button-custom {
     background-color: transparent;
+    background-image: linear-gradient(to bottom, #4e4e4e, #2e2e2e);
     color: white;
     font-weight: normal;
     font-family: "Impact", fantasy;
     border-style: solid;
     border-width: 2px;
-    border-color: #5e5e5e;
+    border-color: #CDAD00;
     border-radius: 5px;
     padding-left: 15px;
     padding-right: 15px;
@@ -47,8 +48,13 @@ GtkWindow {
     padding-bottom: 15px;
     font-size: 15px;
     font-weight: bold;
+    transition: all 200ms ease;
 }
 
+.button-custom:hover {
+    background-image: linear-gradient(to bottom, #5e5e5e, #3e3e3e);
+    border-color: #FFD700;
+}
 
 /* Stile für Buttons im Spielzeitfenster*/
 .button-custom-spielzeit {
@@ -146,13 +152,18 @@ GtkWindow {
 /* Stile für das NumPad-Fenster */
 .numpad-button {
     background-color: #5e5e5e;
-    color: black;
+    background-image: linear-gradient(to bottom, #4e4e4e, #2e2e2e);
+    color: white;
     font-size: 24px;
     font-weight: bold;
-    border: none;
+    border: 1px solid #CDAD00;
     padding: 5px;
     margin: 2px;
     border-radius: 2.8px;
+}
+
+.numpad-button:hover {
+    background-image: linear-gradient(to bottom, #5e5e5e, #3e3e3e);
 }
 
 /* Stil für den 'Ok'-Button */
@@ -211,10 +222,16 @@ GtkWindow {
     color: white;
 }
 
+.time-value.selected {
+    color: #FFD700;
+}
+
 /* Stil für die Buttons um die Zeit-Werte */
 .time-button {
     background-color: transparent;
-    border: none;
+    background-image: linear-gradient(to bottom, #2e2e2e, #1e1e1e);
+    border: 2px solid #CDAD00;
+    border-radius: 5px;
     padding: 10px;
 }
 
@@ -230,3 +247,22 @@ GtkWindow {
     transition: background-color 0.5s;
 }
 
+/* Neue Stile hinzugefügt */
+.large-text {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.dialog-text {
+    color: #FFFFFF;
+}
+
+.reset-button {
+    background-image: linear-gradient(to bottom, #8B0000, #660000);
+    border-color: #FF6347;
+}
+
+.reset-button:hover {
+    background-image: linear-gradient(to bottom, #A00000, #770000);
+    border-color: #FF7F50;
+}

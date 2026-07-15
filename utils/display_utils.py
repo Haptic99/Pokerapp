@@ -1,6 +1,7 @@
 from utils.helpers import format_timer_with_status
 from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
+from data.round_data import RoundData
 
 def update_client_display(instance, data):
     # Aktualisiere die Timer-Daten anhand der vom Server gesendeten Statuswerte
@@ -118,3 +119,14 @@ def update_client_display(instance, data):
 
     if hasattr(instance, "timer_labels") and "Momentane Zeit" in instance.timer_labels:
         instance.timer_labels["Momentane Zeit"].set_text(current_time_str)
+        
+    # --- Aktualisiere Rundenzählung ---
+    if "rounds_count" in data:
+        rounds_count = data.get("rounds_count", 0)
+        RoundData.count = rounds_count
+        
+        # Aktualisiere die Anzeige, falls das Label vorhanden ist
+        if hasattr(instance, "info_labels") and "Anzahl Runden" in instance.info_labels:
+            # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
+            rounds_text = "-" if rounds_count == 0 else str(rounds_count)
+            instance.info_labels["Anzahl Runden"].set_text(rounds_text)
