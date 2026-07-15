@@ -7,7 +7,7 @@ import threading
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
-from utils.helpers import load_css, set_background_image
+from utils.helpers import load_css, set_background_image, format_timer_with_status
 from utils.resources import get_image_path
 from data.blind_data import BlindData
 from data.timer_data import TimerData
@@ -416,13 +416,14 @@ class PokerInterface(Gtk.Window):
         """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
         minute = int(TimerData.minute) if TimerData.minute is not None else 0
         second = int(TimerData.second) if TimerData.second is not None else 0
-        status_text = "" if TimerData.is_running else "‖"
-        self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+        timer_text = format_timer_with_status(minute, second, TimerData.is_running)
+        self.left_labels["Nächste Blinderhöhung"].set_text(timer_text)
         return True
 
     def update_total_game_time(self):
         game_time_minute = int(GameTimeData.minute) if GameTimeData.minute is not None else 0
         game_time_second = int(GameTimeData.second) if GameTimeData.second is not None else 0
-        self.info_labels["Spielzeit"].set_text(f"{game_time_minute:02}:{game_time_second:02}")
+        game_time_text = format_timer_with_status(game_time_minute, game_time_second, GameTimeData.is_running)
+        self.info_labels["Spielzeit"].set_text(game_time_text)
         return True
 

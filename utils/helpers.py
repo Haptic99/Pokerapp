@@ -40,3 +40,7 @@ def set_background_image_in_overlay(overlay, image_path):
     else:
         print(f"Hintergrundbild nicht gefunden: {image_path}")
 
+def format_timer_with_status(minute, second, is_running):
+    """Formatiert Timer-Werte mit Statussymbol (‖ für Pause)."""
+    status_text = "" if is_running else "‖"
+    return f"{status_text} {int(minute):02}:{int(second):02}"

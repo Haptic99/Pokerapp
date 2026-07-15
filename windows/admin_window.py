@@ -5,7 +5,7 @@ import asyncio
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 
-from utils.helpers import set_background_image
+from utils.helpers import set_background_image, format_timer_with_status
 from utils.resources import get_image_path
 from windows.player_position_window import PlayerPositionWindow
 from windows.blind_adjustment_window import BlindAdjustmentWindow
@@ -457,16 +457,8 @@ class AdminWindow(Gtk.Window):
                 GameTimeData.second = 0
                 GameTimeData.minute += 1
 
-        # Wähle das Symbol: "" wenn aktiv, ‖ wenn pausiert
-        status_symbol = "" if GameTimeData.is_running else "‖"
-        new_game_time = f"{status_symbol} {GameTimeData.minute:02}:{GameTimeData.second:02}"
+        new_game_time = format_timer_with_status(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running)
         self.game_time_labels["Spielzeit"].set_text(new_game_time)
-
-        asyncio.run_coroutine_threadsafe(
-            self.send_update_game_time(GameTimeData.minute, GameTimeData.second),
-            self.poker_interface.loop
-        )
-        return True
 
 
 
@@ -552,12 +544,11 @@ class AdminWindow(Gtk.Window):
     def update_timer_table(self):
         set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
         set_second = TimerData.start_second if TimerData.start_second is not None else 0
-
         current_minute = TimerData.minute if TimerData.minute is not None else 0
         current_second = TimerData.second if TimerData.second is not None else 0
-
+        
         set_time_str = f"{str(set_minute).zfill(2)}:{str(set_second).zfill(2)}"
-        current_time_str = f"{str(current_minute).zfill(2)}:{str(current_second).zfill(2)}"
+        current_time_str = format_timer_with_status(current_minute, current_second, TimerData.is_running)
 
         if "Eingestellte Zeit" in self.timer_labels:
             self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
