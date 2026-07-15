@@ -167,13 +167,7 @@ class ChipValueWindow(Gtk.Window):
         # Container zum Fixed-Layout hinzufügen
         self.fixed.put(grid_container, 0, 80)
         
-        # Status-Label hinzufügen für Aktualisierungsstatus
-        self.status_label = Gtk.Label(label="")
-        self.status_label.set_halign(Gtk.Align.START)
-        self.status_label.set_valign(Gtk.Align.CENTER)
-        self.status_label.set_size_request(400, 30)
-        self.status_label.get_style_context().add_class("green-text")
-        self.fixed.put(self.status_label, 20, 420)
+        # Kein Status-Label mehr hinzufügen
         
         # "Schließen"-Button unten rechts
         back_button = Gtk.Button(label="Schliessen")
@@ -189,9 +183,6 @@ class ChipValueWindow(Gtk.Window):
             # Zeige "-" an, wenn Wert 0 ist
             chf_display = "-" if chf_value == 0.0 else f"CHF {chf_value:.2f}"
             label.set_text(chf_display)
-        
-        # Zeige Debug-Info an
-        self.status_label.set_text(f"Aktualisiert: {len(self.chf_labels)} Chipwerte")
 
     def on_chf_button_clicked(self, button, chip_file, chip_value):
         """Öffnet das Overlay zum Bearbeiten des CHF-Werts."""
@@ -284,9 +275,6 @@ class ChipValueWindow(Gtk.Window):
         # UI-Update direkt basierend auf den aktuellen ChipData-Werten
         self.update_chf_labels()
         
-        # Status aktualisieren
-        self.status_label.set_text("Auto-Update: Chipwerte aktualisiert")
-        
         return True  # Damit der Timer weiterläuft
     
     def update_display(self, data):
@@ -296,10 +284,6 @@ class ChipValueWindow(Gtk.Window):
         """
         # Nutzt die gleiche Funktion wie alle anderen Fenster
         update_client_display(self, data)
-        
-        # Status aktualisieren, wenn Chipwerte empfangen wurden
-        if "chip_values" in data:
-            self.status_label.set_text(f"Server-Update: Chipwerte aktualisiert")
     
     def on_window_destroy(self, widget):
         """Wird aufgerufen, wenn das Fenster geschlossen wird."""

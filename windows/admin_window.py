@@ -243,7 +243,7 @@ class AdminWindow(Gtk.Window):
         if hasattr(self.poker_interface, "info_labels") and "Anzahl Runden" in self.poker_interface.info_labels:
             self.poker_interface.info_labels["Anzahl Runden"].set_text(str(rounds_count))
 
-    def open_total_game_time_window(self, widget):
+    def open_total_game_time_window(self, widget, _):
         # Öffnet das Gesamtspielzeit-Fenster mit einem Dummy-Callback
         total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(
             self, confirm_callback=lambda *args: None
@@ -469,16 +469,6 @@ class AdminWindow(Gtk.Window):
         if self.player_window:
             self.update_timer_id = GLib.timeout_add_seconds(1, lambda: self.update_player_window() or False)
         return False
-
-
-    def update_blinds(self):
-        # (Rest der Methode wie im Original)
-        # Hier werden die aktuellen Blind-Daten an den Server gesendet
-        asyncio.run_coroutine_threadsafe(
-            self.send_update_blinds(BlindData.small_blind, BlindData.big_blind),
-            self.poker_interface.loop
-        )
-        return True  # Damit der Timeout-Callback weiterläuft
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         # (Rest der Methode wie im Original)
