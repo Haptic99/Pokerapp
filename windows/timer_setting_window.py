@@ -1,5 +1,8 @@
 import gi
 gi.require_version('Gtk', '3.0')
+import asyncio
+import json
+import websockets
 from gi.repository import Gtk, Gdk, GLib
 
 from utils.helpers import set_background_image
@@ -13,6 +16,8 @@ class TimerSettingWindow(Gtk.Window):
         self.set_default_size(800, 480)
         self.set_transient_for(parent)
         self.set_modal(True)
+
+        self.timer_stopped = True  
 
         # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
@@ -50,9 +55,6 @@ class TimerSettingWindow(Gtk.Window):
 
         # Bestätigungs-Callback
         self.confirm_callback = confirm_callback
-
-        # Variable zum Speichern des Vollbildstatus
-        self.is_fullscreen_mode = False
 
         # Keybindings für Vollbildmodus und Escape
         self.connect("key-press-event", self.on_key_press)
@@ -196,7 +198,6 @@ class TimerSettingWindow(Gtk.Window):
         if label_text == 'C':
             current_label.set_text('00')
             self.new_entry = True
-
             current_label.get_style_context().remove_class("error")
         else:
             if self.new_entry or current_text == '00':
@@ -211,7 +212,6 @@ class TimerSettingWindow(Gtk.Window):
                     new_value = 60
                     new_text = '60'
                     self.new_entry = True
-
                     current_label.get_style_context().add_class("error")
                     GLib.timeout_add(500, self.remove_error_class, current_label)
                 else:
@@ -283,34 +283,43 @@ class TimerSettingWindow(Gtk.Window):
             self.start_timer()
 
     def start_timer(self):
-        if not self.is_running:
+        """
+        Startet oder setzt den Timer fort.
+        - Wenn der Timer gestoppt wurde (self.timer_stopped == True),
+          werden die Werte aus den Eingabefeldern als neue Startwerte übernommen.
+        - Beim Resume nach einer Pause (self.timer_stopped == False) bleiben die bisherigen Startwerte erhalten.
+        """
+        if self.timer_stopped:
+            # Nur wenn der Timer gestoppt wurde, neue Startwerte übernehmen.
             minute = self.label_minute.get_text()
             second = self.label_second.get_text()
-
-            # Werte in TimerData speichern
             TimerData.minute = minute
             TimerData.second = second
-
-            # Speichere die Startwerte, falls sie noch nicht gesetzt wurden
-            if TimerData.start_minute is None and TimerData.start_second is None:
-                TimerData.start_minute = minute
-                TimerData.start_second = second
-
+            TimerData.start_minute = minute
+            TimerData.start_second = second
+        # Beim Resume (Pause) werden die Startwerte nicht aktualisiert.
         self.is_running = True
-        TimerData.is_running = True  # Timer läuft
-        TimerData.is_paused = False  # Timer wird fortgesetzt
+        TimerData.is_running = True
+        TimerData.is_paused = False
+
+        # Sobald der Timer gestartet bzw. fortgesetzt wird, ist er nicht länger als "gestoppt" markiert.
+        self.timer_stopped = False
 
         self.disable_input_fields()
+        self.remove_timer_focus()  # Fokus von den Timer-Feldern entfernen
         self.button_start.set_sensitive(False)
         self.button_pause.set_sensitive(True)
         self.button_stop.set_sensitive(True)
 
-        # Start the timer loop
+        # Starte den Timer-Countdown (wird jede Sekunde update_timer aufrufen)
         self.timer_id = GLib.timeout_add_seconds(1, self.update_timer)
 
-
     def pause_timer(self):
-        """Pausiert den Timer im aktuellen Fenster und aktualisiert alle Bildschirme."""
+        """
+        Pausiert den Timer.
+        Dabei werden die aktuellen Werte beibehalten und es erfolgt ein Update an den Server.
+        Das Flag self.timer_stopped bleibt False, damit beim Resume die alten Startwerte erhalten bleiben.
+        """
         if self.timer_id:
             GLib.source_remove(self.timer_id)
             self.timer_id = None
@@ -320,44 +329,96 @@ class TimerSettingWindow(Gtk.Window):
         TimerData.is_running = False
         TimerData.is_paused = True
 
-        # Buttons aktualisieren
-        self.button_start.set_sensitive(True)
+        # Hier werden die Eingabefelder nicht wieder freigegeben,
+        # da beim Resume die Zeit fortgesetzt werden soll.
+        self.button_start.set_sensitive(True)  # Ermöglicht das Resume
         self.button_pause.set_sensitive(False)
         self.button_stop.set_sensitive(True)
 
-        # Falls das Admin-Window oder Poker-Interface existiert, Timer-Status aktualisieren
-        if self.parent:
-            self.parent.update_all_timer_displays()
-
-
+        # Sende ein Update an den Server, dass der Timer pausiert wurde.
+        asyncio.run_coroutine_threadsafe(
+            self.send_pause_update(TimerData.minute, TimerData.second, TimerData.is_running),
+            self.parent.poker_interface.loop
+        )
 
     def stop_timer(self):
+        """
+        Stoppt den Timer vollständig.
+        Die Anzeige wird auf die zuletzt gespeicherten Startwerte zurückgesetzt und
+        die Eingabefelder werden wieder freigegeben.
+        Anschließend wird self.timer_stopped auf True gesetzt.
+        """
         if self.timer_id:
             GLib.source_remove(self.timer_id)
             self.timer_id = None
-    
-        # Setze die Zustände zurück
+
         self.is_running = False
         self.is_paused = False
-        TimerData.is_running = False  # Timer in TimerData stoppen
-        TimerData.is_paused = False  # Pausenstatus zurücksetzen
+        TimerData.is_running = False
+        TimerData.is_paused = False
 
-        # Setze die gespeicherten Startwerte wieder zurück
+        # Setze die Anzeige auf die ursprünglichen Startwerte zurück
         self.label_minute.set_text(f"{int(TimerData.start_minute):02}")
         self.label_second.set_text(f"{int(TimerData.start_second):02}")
-
-        # Aktualisiere auch die aktuellen Werte in TimerData, um sie mit den Startwerten zu synchronisieren
         TimerData.minute = TimerData.start_minute
         TimerData.second = TimerData.start_second
 
-        # Reaktiviere die Eingabefelder für Minuten und Sekunden
+        # Reaktiviere die Eingabefelder, sodass eine neue Zeit eingestellt werden kann.
         self.enable_input_fields()
-
-        # Aktualisiere die Button-Zustände
         self.button_start.set_sensitive(True)
         self.button_pause.set_sensitive(False)
         self.button_stop.set_sensitive(False)
 
+        # Markiere, dass der Timer jetzt vollständig gestoppt wurde.
+        self.timer_stopped = True
+
+        # Sende ein finales Update an den Server, damit alle Clients den gestoppten Status erhalten.
+        asyncio.run_coroutine_threadsafe(
+            self.send_final_timer_update(TimerData.minute, TimerData.second, TimerData.is_running),
+            self.parent.poker_interface.loop
+        )
+
+    async def send_pause_update(self, minute, second, is_running):
+        """
+        Baut eine WebSocket-Verbindung zum Server auf und sendet den Timerstatus.
+        So erhalten alle Clients das finale Update, dass der Timer pausiert ist.
+        """
+        # Serveradresse aus dem übergeordneten Interface abrufen
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_timer",
+            "minute": minute,
+            "second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Pause update sent.")
+        except Exception as e:
+            print(f"Error sending pause update: {e}")
+
+    async def send_final_timer_update(self, minute, second, is_running):
+        """
+        Baut eine WebSocket-Verbindung zum Server auf und sendet den finalen Timerstatus.
+        Dieser Update teilt allen Clients mit, dass der Timer gestoppt wurde.
+        """
+        # Hole die Serveradresse aus dem übergeordneten Interface
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_timer",
+            "minute": minute,
+            "second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Final timer update sent.")
+        except Exception as e:
+            print(f"Error sending final timer update: {e}")
 
     def on_pause_button_click(self, button):
         """Pausiert den Timer und aktualisiert alle Bildschirme."""
@@ -366,8 +427,6 @@ class TimerSettingWindow(Gtk.Window):
         # Falls das Admin-Window oder Poker-Interface existiert, Timer-Status synchronisieren
         if self.parent:
             self.parent.update_all_timer_displays()
-
-
 
     def on_stop_button_click(self, button):
         self.stop_timer()
@@ -387,8 +446,8 @@ class TimerSettingWindow(Gtk.Window):
             second -= 1
 
         # Aktualisiere die Labels
-        self.label_minute.set_text(str(f"{minute:02}"))
-        self.label_second.set_text(str(f"{second:02}"))
+        self.label_minute.set_text(f"{minute:02}")
+        self.label_second.set_text(f"{second:02}")
 
         # Aktualisiere TimerData
         TimerData.minute = minute
@@ -415,19 +474,23 @@ class TimerSettingWindow(Gtk.Window):
             buttons=Gtk.ButtonsType.OK,
             text="Timer abgelaufen!",
         )
-        dialog.format_secondary_text(
-            "Die eingestellte Zeit ist abgelaufen."
-        )
+        dialog.format_secondary_text("Die eingestellte Zeit ist abgelaufen.")
         dialog.run()
         dialog.destroy()
 
     def disable_input_fields(self):
+        """Deaktiviert die Eingabefelder und entfernt deren Fokus."""
         self.button_minute.set_sensitive(False)
         self.button_second.set_sensitive(False)
+        self.button_minute.set_can_focus(False)
+        self.button_second.set_can_focus(False)
 
     def enable_input_fields(self):
+        """Aktiviert die Eingabefelder und erlaubt den Fokus."""
         self.button_minute.set_sensitive(True)
         self.button_second.set_sensitive(True)
+        self.button_minute.set_can_focus(True)
+        self.button_second.set_can_focus(True)
 
     def reset_timer_labels(self):
         # Reset to the initial time stored in TimerData
@@ -435,3 +498,7 @@ class TimerSettingWindow(Gtk.Window):
         second = TimerData.second if TimerData.second is not None else "00"
         self.label_minute.set_text(f"{int(minute):02}")
         self.label_second.set_text(f"{int(second):02}")
+
+    def remove_timer_focus(self):
+        """Entfernt den Fokus von den Timer-Eingabefeldern, indem der Fokus auf den Fixed-Container übergeben wird."""
+        self.fixed.grab_focus()

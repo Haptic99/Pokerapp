@@ -89,9 +89,9 @@ class PokerAdminClient(PokerInterface):
                 await asyncio.sleep(5)  # 5 Sekunden warten, dann erneut versuchen
 
     def update_display(self, data):
-        """Aktualisiert die Anzeige basierend auf den empfangenen Daten."""
-        small_blind = data.get("small_blind", "n.V.")
-        big_blind = data.get("big_blind", "n.V.")
+        # Nutze den "or"-Operator, um auch den Fall abzudecken, dass der Wert None ist.
+        small_blind = data.get("small_blind") or "n.V."
+        big_blind = data.get("big_blind") or "n.V."
         try:
             minute = int(data.get("minute") or 0)
             second = int(data.get("second") or 0)
@@ -102,16 +102,14 @@ class PokerAdminClient(PokerInterface):
         status_text = "►" if data.get("is_running", False) else "‖"
 
         if hasattr(self, "left_labels"):
-            # Aktualisiere die Small Blind und Big Blind Labels
             if "Small Blind" in self.left_labels:
                 self.left_labels["Small Blind"].set_text(small_blind)
             if "Big Blind" in self.left_labels:
                 self.left_labels["Big Blind"].set_text(big_blind)
-            # Aktualisiere das Timer-Label
             if "Nächste Blinderhöhung" in self.left_labels:
                 new_text = f"{status_text} {minute:02}:{second:02}"
-                print("Admin-Client: Aktualisiere Timer-Label auf:", new_text)
                 self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
 
     async def send_update_to_server(self, command, payload):
         """Sendet eine Aktualisierung (z. B. Blinds oder Timer) an den Server."""

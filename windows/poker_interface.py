@@ -465,26 +465,21 @@ class PokerInterface(Gtk.Window):
             
             
     def update_display(self, data):
-        """Aktualisiert die Anzeige basierend auf den Server-Daten."""
-        # Fallback-Werte setzen, falls Daten fehlen
-        small_blind = data.get("small_blind", "n.V.")
-        big_blind = data.get("big_blind", "n.V.")
-        minute = data.get("minute", 0)
-        second = data.get("second", 0)
+        small_blind = data.get("small_blind") or "n.V."
+        big_blind = data.get("big_blind") or "n.V."
+        try:
+            minute = int(data.get("minute") or 0)
+            second = int(data.get("second") or 0)
+        except Exception as e:
+            print("Fehler bei der Umwandlung von minute/second:", e)
+            minute, second = 0, 0
+
         status_text = "►" if data.get("is_running", False) else "‖"
 
-        # Aktualisiere Small Blind und Big Blind Labels, falls sie existieren
         if hasattr(self, "left_labels"):
             if "Small Blind" in self.left_labels:
-                self.left_labels["Small Blind"].set_text(str(small_blind))
-            else:
-                print("⚠ 'Small Blind'-Label existiert nicht.")
-        
+                self.left_labels["Small Blind"].set_text(small_blind)
             if "Big Blind" in self.left_labels:
-                self.left_labels["Big Blind"].set_text(str(big_blind))
-            else:
-                print("⚠ 'Big Blind'-Label existiert nicht.")
-        
+                self.left_labels["Big Blind"].set_text(big_blind)
             if "Nächste Blinderhöhung" in self.left_labels:
-                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {int(minute):02}:{int(second):02}")
-
+                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")

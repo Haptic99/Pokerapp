@@ -227,55 +227,60 @@ class AdminWindow(Gtk.Window):
         self.fixed.put(self.blinds_table, 180, 6)
 
     def create_timer_table(self):
-        # (Unverändert – siehe ursprünglichen Code)
         self.timer_table = Gtk.Grid()
         self.timer_table.set_row_spacing(5)
         self.timer_table.set_column_spacing(10)
         self.timer_table.set_margin_top(10)
         self.timer_table.set_margin_left(40)
 
-        minute_value = TimerData.minute if TimerData.minute is not None else 0
-        second_value = TimerData.second if TimerData.second is not None else 0
-        minute = TimerData.start_minute if TimerData.start_minute is not None else 0
-        second = TimerData.start_second if TimerData.start_second is not None else 0
+        # Hole die eingestellte Zeit (Startzeit)
+        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        set_second = TimerData.start_second if TimerData.start_second is not None else 0
 
-        minute_str = str(minute).zfill(2)
-        second_str = str(second).zfill(2)
-        minute_value_str = str(minute_value).zfill(2)
-        second_value_str = str(second_value).zfill(2)
+        # Hole die momentane Zeit
+        current_minute = TimerData.minute if TimerData.minute is not None else 0
+        current_second = TimerData.second if TimerData.second is not None else 0
 
+        # Formatierung der Zeiten
+        set_time_str = f"{str(set_minute).zfill(2)}:{str(set_second).zfill(2)}"
+        current_time_str = f"{str(current_minute).zfill(2)}:{str(current_second).zfill(2)}"
+
+        # Daten: Erste Zeile: eingestellte Zeit, Zweite Zeile: momentane Zeit
         data = [
-            ("Eingestellte Zeit", f"{minute_str}:{second_str}"),
-            ("Momentane Zeit", f"{minute_value_str}:{second_value_str}"),
+            ("Eingestellte Zeit", set_time_str),
+            ("Momentane Zeit", current_time_str),
         ]
 
         self.timer_labels = {}
 
-        for row, (col1, col2) in enumerate(data):
-            label1 = Gtk.Label(label=col1)
-            label2 = Gtk.Label(label=col2)
-            label1.set_size_request(150, 25)
-            label2.set_size_request(70, 25)
-            label1.set_xalign(0.0)
-            label1.set_margin_left(6)
-            label2.set_xalign(1.0)
-            label2.set_margin_right(6)
-            label1.get_style_context().add_class("green-text")
-            label2.get_style_context().add_class("green-text")
-            self.timer_labels[col1] = label2
+        for row, (title, time_str) in enumerate(data):
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=time_str)
+            label_title.set_size_request(150, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            
+            # Speichere die Zeit-Labels in einem Dictionary, um sie später updaten zu können
+            self.timer_labels[title] = label_time
 
-            frame1 = Gtk.Frame()
-            frame1.add(label1)
-            frame1.get_style_context().add_class("table-cell")
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
 
-            frame2 = Gtk.Frame()
-            frame2.add(label2)
-            frame2.get_style_context().add_class("table-cell")
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
 
-            self.timer_table.attach(frame1, 0, row, 1, 1)
-            self.timer_table.attach(frame2, 1, row, 1, 1)
+            self.timer_table.attach(frame_title, 0, row, 1, 1)
+            self.timer_table.attach(frame_time, 1, row, 1, 1)
 
         self.fixed.put(self.timer_table, 180, 110)
+
 
     def update_all_timer_displays(self):
         minute = int(TimerData.minute) if TimerData.minute is not None else 0
@@ -395,8 +400,23 @@ class AdminWindow(Gtk.Window):
         self.blind_labels["Small Blind"].set_text(small_blind)
         self.blind_labels["Big Blind"].set_text(big_blind)
 
-    def update_timer_table(self, minute, second):
-        self.timer_labels["Zeit"].set_text(minute.zfill(2) + ":" + second.zfill(2))
+    def update_timer_table(self):
+        # Hole die aktuellen Startwerte (eingestellte Zeit)
+        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        set_second = TimerData.start_second if TimerData.start_second is not None else 0
+
+        # Hole die momentanen Timerwerte
+        current_minute = TimerData.minute if TimerData.minute is not None else 0
+        current_second = TimerData.second if TimerData.second is not None else 0
+
+        set_time_str = f"{str(set_minute).zfill(2)}:{str(set_second).zfill(2)}"
+        current_time_str = f"{str(current_minute).zfill(2)}:{str(current_second).zfill(2)}"
+
+        if "Eingestellte Zeit" in self.timer_labels:
+            self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
+        if "Momentane Zeit" in self.timer_labels:
+            self.timer_labels["Momentane Zeit"].set_text(current_time_str)
+
 
     def on_back_button_click(self, widget):
         self.close()

@@ -73,11 +73,10 @@ class PokerClient(PokerInterface):
         self.loop.run_forever()
 
     async def listen_for_updates(self):
-        """Empfängt Daten vom Server und aktualisiert das Interface."""
+        # Bestimme die URI wie gehabt
         if self.server_address:
             uri = f"ws://{self.server_address[0]}:{self.server_address[1]}"
         else:
-            # Fallback, wenn kein Server gefunden wurde
             uri = "ws://192.168.1.65:8765"
 
         while True:
@@ -87,15 +86,16 @@ class PokerClient(PokerInterface):
                     await websocket.send(json.dumps({"command": "get_status"}))
                     async for message in websocket:
                         data = json.loads(message)
+                        # Hier wird update_display aus der Basisklasse aufgerufen.
                         GLib.idle_add(self.update_display, data)
             except Exception as e:
                 print(f"⚠ Verbindung zum Server fehlgeschlagen: {e}")
-                await asyncio.sleep(5)  # 5 Sekunden warten, dann erneut versuchen
+                await asyncio.sleep(5)
 
     def update_display(self, data):
-        """Aktualisiert die Anzeige basierend auf den empfangenen Daten."""
-        small_blind = data.get("small_blind", "n.V.")
-        big_blind = data.get("big_blind", "n.V.")
+        # Nutze den "or"-Operator, um auch den Fall abzudecken, dass der Wert None ist.
+        small_blind = data.get("small_blind") or "n.V."
+        big_blind = data.get("big_blind") or "n.V."
         try:
             minute = int(data.get("minute") or 0)
             second = int(data.get("second") or 0)
@@ -106,16 +106,14 @@ class PokerClient(PokerInterface):
         status_text = "►" if data.get("is_running", False) else "‖"
 
         if hasattr(self, "left_labels"):
-            # Aktualisiere die Small Blind und Big Blind Labels
             if "Small Blind" in self.left_labels:
                 self.left_labels["Small Blind"].set_text(small_blind)
             if "Big Blind" in self.left_labels:
                 self.left_labels["Big Blind"].set_text(big_blind)
-            # Aktualisiere das Timer-Label
             if "Nächste Blinderhöhung" in self.left_labels:
                 new_text = f"{status_text} {minute:02}:{second:02}"
-                print("Client: Aktualisiere Timer-Label auf:", new_text)
                 self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
 
 
 if __name__ == "__main__":
