@@ -3,17 +3,19 @@ import websockets
 import json
 import socket
 from zeroconf import Zeroconf, ServiceInfo
-from data.timer_data import TimerData
-from data.blind_data import BlindData
+from data.timer_data import TimerData  # Timer-Daten
+from data.blind_data import BlindData  # Blind-Daten
 
 # Hole die lokale IP-Adresse
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 
-service_type = "_poker._tcp.local."  # Service-Typ (wähle einen eindeutigen Namen)
+# Zeroconf-Dienstinformationen
+service_type = "_poker._tcp.local."  # Service-Typ (eindeutiger Name)
 service_name = "PokerServer._poker._tcp.local."  # Vollständiger Dienstname
-port = 8765  # Der Port, auf dem dein WebSocket-Server läuft
+port = 8765  # Der Port, auf dem der WebSocket-Server läuft
 
+# Dienstinformationen für Zeroconf
 info = ServiceInfo(
     service_type,
     service_name,
@@ -23,18 +25,12 @@ info = ServiceInfo(
     server=f"{hostname}.local."
 )
 
+# Zeroconf initialisieren
 zeroconf = Zeroconf()
-print("Registriere den Service...")
+print("Registriere den Zeroconf-Service...")
 zeroconf.register_service(info)
 
-try:
-    # Hier startet dein Server, z. B. asyncio.run(main())
-    pass
-finally:
-    zeroconf.unregister_service(info)
-    zeroconf.close()
-
-clients = set()
+clients = set()  # Liste der verbundenen Clients
 
 async def handle_client(websocket):
     """Verwaltet eine neue Client-Verbindung."""
@@ -75,6 +71,7 @@ async def send_game_status(websocket):
     await websocket.send(json.dumps(game_status))
 
 async def broadcast_game_status():
+    """Broadcastet den aktuellen Spielstatus an alle verbundenen Clients."""
     if clients:
         game_status = {
             "small_blind": BlindData.small_blind,
@@ -86,12 +83,19 @@ async def broadcast_game_status():
         print("Broadcasting game status:", game_status)  # Debug-Ausgabe
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
 
-
-
 async def main():
-    async with websockets.serve(handle_client, "0.0.0.0", 8765):
-        print("Poker-Server läuft auf Port 8765")
-        await asyncio.Future()  # Lässt den Server unbegrenzt laufen
+    """Startet den WebSocket-Server."""
+    try:
+        async with websockets.serve(handle_client, "0.0.0.0", port):
+            print(f"🔥 Poker-Server läuft auf Port {port}")
+            await asyncio.Future()  # Lässt den Server unbegrenzt laufen
+    except Exception as e:
+        print(f"❌ Fehler beim Starten des Servers: {e}")
+    finally:
+        # Zeroconf-Service deregistrieren
+        print("Deregistere den Zeroconf-Service...")
+        zeroconf.unregister_service(info)
+        zeroconf.close()
 
 if __name__ == "__main__":
     asyncio.run(main())  # Startet den Event-Loop

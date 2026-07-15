@@ -4,43 +4,33 @@ import json
 import threading
 import gi
 import socket
+import time
+from zeroconf import Zeroconf, ServiceBrowser
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
 from windows.poker_interface import PokerInterface  # Nutzt das gleiche Interface
-from zeroconf import Zeroconf, ServiceBrowser
+
 
 class MyListener:
+    """Listener für Zeroconf, um den Poker-Server zu entdecken."""
     def __init__(self):
         self.server_address = None
 
     def remove_service(self, zeroconf, type, name):
-        pass
+        pass  # Keine Aktion erforderlich, wenn ein Service entfernt wird
 
     def add_service(self, zeroconf, type, name):
+        """Wird aufgerufen, wenn ein Dienst gefunden wird."""
         info = zeroconf.get_service_info(type, name)
         if info:
             addr = socket.inet_ntoa(info.addresses[0])
             print(f"Gefundener Server: {name} unter {addr}:{info.port}")
             self.server_address = (addr, info.port)
 
-zeroconf = Zeroconf()
-listener = MyListener()
-browser = ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
-
-# Warte eine gewisse Zeit, damit der Dienst gefunden wird
-import time
-time.sleep(5)
-
-if listener.server_address:
-    server_ip, server_port = listener.server_address
-    print(f"Verbinde zu Server: {server_ip}:{server_port}")
-    # Hier kannst du dann die Verbindung zum Server herstellen, z.B.:
-    # asyncio.run_coroutine_threadsafe(self.listen_for_updates(), ...)
-
-zeroconf.close()
 
 class PokerClient(PokerInterface):
+    """Der Poker-Client."""
     def __init__(self):
         super().__init__(is_admin=False)  # ✅ Client ist KEIN Admin
 
@@ -48,8 +38,28 @@ class PokerClient(PokerInterface):
         if hasattr(self, "fixed") and hasattr(self, "administration_button"):
             self.fixed.remove(self.administration_button)
 
+        # Zeroconf-Diensterkennung starten
+        self.server_address = self.find_server_via_zeroconf()
+
         # Starte den Netzwerk-Listener in eigenem Thread
         self.start_async_loop()
+
+    def find_server_via_zeroconf(self):
+        """Verwendet Zeroconf, um den Poker-Server zu finden."""
+        zeroconf = Zeroconf()
+        listener = MyListener()
+        browser = ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
+
+        print("🔍 Suche nach dem Server...")
+        time.sleep(5)  # Warte einige Sekunden, um Dienste zu entdecken
+        zeroconf.close()
+
+        if listener.server_address:
+            print(f"✅ Server gefunden unter {listener.server_address}")
+            return listener.server_address
+        else:
+            print("❌ Kein Server gefunden. Verwende eine Standard-Adresse.")
+            return None  # Es kann ein Fallback verwendet werden
 
     def start_async_loop(self):
         """Startet den asyncio-Eventloop in einem separaten Thread."""
@@ -64,11 +74,16 @@ class PokerClient(PokerInterface):
 
     async def listen_for_updates(self):
         """Empfängt Daten vom Server und aktualisiert das Interface."""
-        uri = "ws://192.168.1.65:8765"  # Server-IP anpassen
+        if self.server_address:
+            uri = f"ws://{self.server_address[0]}:{self.server_address[1]}"
+        else:
+            # Fallback, wenn kein Server gefunden wurde
+            uri = "ws://192.168.1.65:8765"
 
         while True:
             try:
                 async with websockets.connect(uri) as websocket:
+                    print(f"🔗 Verbunden mit dem Server: {uri}")
                     await websocket.send(json.dumps({"command": "get_status"}))
                     async for message in websocket:
                         data = json.loads(message)
@@ -78,6 +93,7 @@ class PokerClient(PokerInterface):
                 await asyncio.sleep(5)  # 5 Sekunden warten, dann erneut versuchen
 
     def update_display(self, data):
+        """Aktualisiert die Anzeige basierend auf den empfangenen Daten."""
         small_blind = data.get("small_blind", "n.V.")
         big_blind = data.get("big_blind", "n.V.")
         try:
@@ -87,12 +103,10 @@ class PokerClient(PokerInterface):
             print("Fehler bei der Umwandlung von minute/second:", e)
             minute, second = 0, 0
 
-
-        print(is_running,e)
         status_text = "►" if data.get("is_running", False) else "‖"
 
         if hasattr(self, "left_labels"):
-            # Aktualisiere auch die Blind-Labels, falls erwünscht
+            # Aktualisiere die Small Blind und Big Blind Labels
             if "Small Blind" in self.left_labels:
                 self.left_labels["Small Blind"].set_text(small_blind)
             if "Big Blind" in self.left_labels:
@@ -102,11 +116,6 @@ class PokerClient(PokerInterface):
                 new_text = f"{status_text} {minute:02}:{second:02}"
                 print("Client: Aktualisiere Timer-Label auf:", new_text)
                 self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
-
-
-
-
-
 
 
 if __name__ == "__main__":
