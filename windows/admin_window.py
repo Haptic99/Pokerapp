@@ -262,9 +262,8 @@ class AdminWindow(Gtk.Window):
         TimerData.is_running = True
 
     async def send_update_blinds(self, small_blind, big_blind):
-        # Verwende den dynamisch entdeckten Serverhost, falls vorhanden
-        server_ip = getattr(self.poker_interface, "server_ip", "192.168.1.65")
-        server_port = getattr(self.poker_interface, "server_port", 8765)
+        # Dynamisch ermittelte Server-IP und Port verwenden
+        server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         try:
             async with websockets.connect(uri) as websocket:
@@ -275,16 +274,11 @@ class AdminWindow(Gtk.Window):
                 }
                 await websocket.send(json.dumps(message))
         except Exception as e:
-            print(f"Fehler beim Senden der Blinds: {e}")
+            print(f"⚠ Fehler beim Senden der Blinds: {e}")
 
-    @staticmethod
-    async def send_update_timer(minute, second, is_running):
-        # Hier könnte ebenfalls ein dynamisch entdeckter Serverhost genutzt werden.
-        # Falls kein Wert verfügbar ist, verwende den Standard.
-        # (Da diese Methode als static definiert ist, kann man z.B. auf
-        # eine globale Variable zugreifen oder den Standardwert verwenden.)
-        server_ip = "192.168.1.65"  # Alternativ: hole diesen Wert aus einer Konfiguration
-        server_port = 8765
+    async def send_update_timer(self, minute, second, is_running):
+        # Dynamisch ermittelte Server-IP und Port verwenden
+        server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         try:
             async with websockets.connect(uri) as websocket:
@@ -296,7 +290,7 @@ class AdminWindow(Gtk.Window):
                 }
                 await websocket.send(json.dumps(message))
         except Exception as e:
-            print(f"Fehler beim Senden des Timers: {e}")
+            print(f"⚠ Fehler beim Senden des Timers: {e}")
 
     def update_blinds_table(self, small_blind, big_blind):
         self.blind_labels["Small Blind"].set_text(small_blind)
