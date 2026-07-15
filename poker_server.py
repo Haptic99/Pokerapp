@@ -31,6 +31,8 @@ print("Registriere den Zeroconf-Service...")
 zeroconf.register_service(info)
 
 clients = set()  # Liste der verbundenen Clients
+connected_players = set()  # Menge der Spielernamen
+
 
 async def handle_client(websocket):
     """Verwaltet eine neue Client-Verbindung."""
@@ -41,6 +43,13 @@ async def handle_client(websocket):
         async for message in websocket:
             data = json.loads(message)
 
+            # Spielername wird gesendet
+            if data.get("action") == "join":
+                player_name = data.get("name", "Unbekannt")
+                connected_players.add(player_name)
+                print(f"✅ Spieler verbunden: {player_name}")
+
+            # Andere Kommandos werden verarbeitet
             if "command" in data:
                 if data["command"] == "get_status":
                     await send_game_status(websocket)
@@ -59,6 +68,7 @@ async def handle_client(websocket):
     finally:
         clients.remove(websocket)
 
+
 async def send_game_status(websocket):
     """Sendet den aktuellen Spielstatus an einen einzelnen Client."""
     game_status = {
@@ -69,6 +79,7 @@ async def send_game_status(websocket):
         "is_running": TimerData.is_running
     }
     await websocket.send(json.dumps(game_status))
+
 
 async def broadcast_game_status():
     """Broadcastet den aktuellen Spielstatus an alle verbundenen Clients."""
@@ -83,6 +94,7 @@ async def broadcast_game_status():
         print("Broadcasting game status:", game_status)  # Debug-Ausgabe
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
 
+
 async def main():
     """Startet den WebSocket-Server."""
     try:
@@ -96,6 +108,7 @@ async def main():
         print("Deregistere den Zeroconf-Service...")
         zeroconf.unregister_service(info)
         zeroconf.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())  # Startet den Event-Loop

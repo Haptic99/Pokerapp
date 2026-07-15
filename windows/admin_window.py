@@ -52,6 +52,10 @@ class AdminWindow(Gtk.Window):
         # Timer für Admin-Fenster starten
         self.start_admin_timer()
 
+
+
+
+
     def create_ui(self):
         # "Blinds anpassen" Button
         adjust_blinds_button = Gtk.Button(label="Blinds anpassen")
@@ -71,6 +75,14 @@ class AdminWindow(Gtk.Window):
         blinds_times_button.get_style_context().add_class("button-custom")
         self.fixed.put(blinds_times_button, 30, 120)
 
+        # "Spielerplatzierung" Button
+        player_position_button = Gtk.Button(label="Spielerplatzierung")
+        player_position_button.set_size_request(165, 40)
+        player_position_button.connect("clicked", self.open_player_position_window)
+        player_position_button.get_style_context().add_class("button-custom")
+        self.fixed.put(player_position_button, 30, 220)
+
+
         # Tabelle für Blinds erstellen
         self.create_blinds_table()
 
@@ -83,6 +95,16 @@ class AdminWindow(Gtk.Window):
         back_button.connect("clicked", self.on_back_button_click)
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
+
+    def open_player_position_window(self, widget):
+        """Öffnet das Fenster für die Spielerplatzierung."""
+        # Beispiel: Spieler aus einer globalen Variable oder Datenbank abrufen
+        players = ["Daniel", "Martina", "John", "Alex", "Sarah", "Chris", "Emma", "Tom"]
+
+        player_window = PlayerPositionWindow(players)
+        player_window.show_all()
+
+
 
     def create_blinds_table(self):
         # (Unverändert – siehe ursprünglichen Code)
@@ -337,3 +359,10 @@ class AdminWindow(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
+
+
+if __name__ == "__main__":
+    win = PokerInterface(is_admin=False)  # Normaler Client
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()

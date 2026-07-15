@@ -1,5 +1,29 @@
 /* styles/style.css */
 
+/* Hintergrund für das Poker Interface */
+#poker_interface {
+    background: #2b2b2b;
+}
+
+/* Begrüßungsbildschirm-Styling */
+#welcome_box {
+    background-color: rgba(255, 255, 255, 0.85); /* Semitransparenter Hintergrund */
+    border-radius: 15px; /* Abgerundete Ecken */
+    padding: 20px; /* Innenabstand */
+}
+
+
+/* Halbtransparenter Blocker für den Hintergrund */
+GtkEventBox {
+    background-color: rgba(0, 0, 0, 0.5); /* Halbtransparente Überlagerung */
+}
+
+
+/* Simulierter halbtransparenter Effekt für den Hintergrund */
+GtkWindow {
+    background: rgba(43, 43, 43, 0.7); /* Semitransparenter Hintergrund */
+}
+
 /* Allgemeine Stile für Buttons */
 .button-custom {
     background-color: transparent;

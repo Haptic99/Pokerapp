@@ -5,7 +5,6 @@ import json
 import os
 import threading
 
-
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
 from utils.helpers import load_css, set_background_image
@@ -16,43 +15,49 @@ from windows.admin_window import AdminWindow
 from windows.poker_hands_window import PokerHandsWindow
 
 
-
 class PokerInterface(Gtk.Window):
     def __init__(self, is_admin=False):
         super().__init__(title="Poker Interface")
         self.set_default_size(800, 480)
         self.is_admin = is_admin  # Admin-Status speichern
 
-        self.server_ip = "192.168.1.65"  # Wird später durch den Discovery-Mechanismus ersetzt
-        self.server_port = 8765
-
-         # Erzeuge den Event-Loop für alle Clients (Admin und normal)
+        # Event-Loop für asynchrone WebSocket-Kommunikation
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.run_async_loop, daemon=True).start()
 
-        # Admin-Fenster-Referenz initialisieren
-        self.admin_window = None 
+        # Spieler- oder Admin-Name
+        self.player_name = None
 
-        # Vollbildmodus-Status (wichtig für Admin-Fenster)
-        self.is_fullscreen_mode = False
+        # Hauptcontainer für das Interface
+        self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(self.main_box)
 
-        # CSS laden
-        load_css()
-
-        # Overlay erstellen
+        # Overlay für den Begrüßungsbildschirm
         self.overlay = Gtk.Overlay()
-        self.add(self.overlay)
+        self.main_box.pack_start(self.overlay, True, True, 0)
 
         # Hintergrundbild setzen
         self.background_image_path = get_image_path("background_start.jpg")
-        set_background_image(self.overlay, self.background_image_path)
+        self.set_background_image(self.background_image_path)
 
-        # Erstellen eines Gtk.Fixed-Containers, um die Buttons manuell zu positionieren
+        # Fixed-Container für Buttons
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
 
         # Buttons erstellen
         self.create_buttons()
+
+        # Begrüßungs-Bildschirm erstellen
+        self.create_welcome_screen()
+
+        # Admin-Fenster-Referenz initialisieren
+        self.admin_window = None
+
+        # Vollbildmodus-Status (wichtig für Admin-Fenster)
+        self.is_fullscreen_mode = False
+
+        # CSS laden
+        self.load_css()
 
         # Tabellen erstellen
         self.create_table_left()
@@ -60,11 +65,133 @@ class PokerInterface(Gtk.Window):
 
         # Timer starten
         self.start_timer()
-        
+
+    def create_welcome_screen(self):
+        """Erstellt den Begrüßungsbildschirm mit Nameingabe."""
+        # Alle Buttons deaktivieren
+        self.disable_buttons()
+
+        # Begrüßungsbox
+        self.welcome_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.welcome_box.set_halign(Gtk.Align.CENTER)
+        self.welcome_box.set_valign(Gtk.Align.CENTER)
+        self.welcome_box.set_name("welcome_box")  # Name für CSS
+
+        # Begrüßungstext
+        welcome_label = Gtk.Label(label="Willkommen! Möchten Sie hier Platz nehmen?")
+        self.welcome_box.pack_start(welcome_label, True, True, 0)
+
+        # Button "Hier hinsetzen"
+        start_button = Gtk.Button(label="Hier hinsetzen")
+        start_button.connect("clicked", self.on_start_button_clicked)
+        self.welcome_box.pack_start(start_button, True, True, 0)
+
+        # Eingabefeld für den Namen (zuerst versteckt)
+        self.name_entry = Gtk.Entry()
+        self.name_entry.set_placeholder_text("Name eingeben...")
+        self.name_entry.connect("activate", self.on_name_entered)
+        self.name_entry.hide()
+        self.welcome_box.pack_start(self.name_entry, True, True, 0)
+
+        # Begrüßungsbox zum Overlay hinzufügen
+        self.overlay.add_overlay(self.welcome_box)
+
+    def on_start_button_clicked(self, button):
+        """Speichert den Namen, schließt die Begrüßungsbox und sendet die Daten an den Server."""
+        name = self.name_entry.get_text().strip()  # Namen aus dem Eingabefeld lesen
+        if name:
+            self.player_name = name
+            print(f"Benutzername: {name}")  # Debug-Ausgabe
+            self.welcome_box.destroy()  # Begrüßungsbox entfernen
+            self.enable_buttons()  # Buttons aktivieren
+            self.send_name_to_server()  # Namen an den Server senden
+        else:
+            print("Name darf nicht leer sein!")  # Debug-Ausgabe, wenn kein Name eingegeben wurde
+
+    def send_name_to_server(self):
+        """Sendet den Namen des Spielers an den Server."""
+        asyncio.run_coroutine_threadsafe(self.connect_to_server(), self.loop)
+
+    def on_name_entered(self, entry):
+        """Speichert den Namen und entfernt den Begrüßungsbildschirm."""
+        name = entry.get_text().strip()
+        if name:
+            self.player_name = name
+            print(f"Benutzername: {name}")  # Debug-Ausgabe
+            self.welcome_box.destroy()  # Begrüßungsbox entfernen
+            self.enable_buttons()  # Buttons wieder aktivieren
+            self.initialize_interface()
+
+    def initialize_interface(self):
+        """Initialisiert die Poker-Oberfläche nach der Namensabfrage."""
+        asyncio.run_coroutine_threadsafe(self.connect_to_server(), self.loop)
+
+    async def connect_to_server(self):
+        """Stellt die Verbindung zum Poker-Server her und sendet den Namen."""
+        try:
+            uri = "ws://localhost:8765"  # Beispiel-URL
+            async with websockets.connect(uri) as websocket:
+                # Name an den Server senden
+                await websocket.send(json.dumps({"action": "join", "name": self.player_name}))
+                print("Verbindung hergestellt und Name gesendet.")
+        except Exception as e:
+            print(f"Fehler beim Verbinden: {e}")
+
+
+    def disable_buttons(self):
+        """Setzt alle Buttons im Hintergrund in den inaktiven Zustand."""
+        for child in self.fixed.get_children():
+            if isinstance(child, Gtk.Button):
+                child.set_sensitive(False)
+
+    def enable_buttons(self):
+        """Aktiviert alle Buttons im Hintergrund."""
+        for child in self.fixed.get_children():
+            if isinstance(child, Gtk.Button):
+                child.set_sensitive(True)
+
+    def set_background_image(self, image_path):
+        """Setzt ein Hintergrundbild."""
+        full_path = os.path.join(os.path.dirname(__file__), "../images", image_path)
+        if os.path.exists(full_path):
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 800, 480, False)
+            background = Gtk.Image.new_from_pixbuf(pixbuf)
+            self.overlay.add(background)
+            self.overlay.set_overlay_pass_through(background, True)
+
+    def load_css(self):
+        """Lädt das CSS für die GUI."""
+        css_provider = Gtk.CssProvider()
+        css_path = os.path.join(os.path.dirname(__file__), "../styles/style.css")
+        with open(css_path, "r") as css_file:
+            css_data = css_file.read()
+            css_provider.load_from_data(css_data.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
     def run_async_loop(self):
+        """Startet den asynchronen Event-Loop im Hintergrund."""
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
+
+    def start_timer(self):
+        """Timer im Poker-Interface starten."""
+        GLib.timeout_add_seconds(1, self.update_timer)  # Jede Sekunde aktualisieren
+
+    def update_timer(self):
+        """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
+        if TimerData.is_running:
+            minute = int(TimerData.minute) if TimerData.minute is not None else 0
+            second = int(TimerData.second) if TimerData.second is not None else 0
+            self.left_labels["Nächste Blinderhöhung"].set_text(f"{minute:02}:{second:02}")
+        return True  # Timer weiterlaufen lassen
+
+
+
+
+
+
 
 
 
