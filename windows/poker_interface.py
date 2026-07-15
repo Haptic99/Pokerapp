@@ -23,6 +23,9 @@ class PokerInterface(Gtk.Window):
         self.set_default_size(800, 480)
         self.is_admin = is_admin  # Admin-Status speichern
 
+        self.server_ip = "192.168.1.65"  # Wird später durch den Discovery-Mechanismus ersetzt
+        self.server_port = 8765
+
          # Erzeuge den Event-Loop für alle Clients (Admin und normal)
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.run_async_loop, daemon=True).start()

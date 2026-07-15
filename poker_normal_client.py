@@ -3,10 +3,42 @@ import websockets
 import json
 import threading
 import gi
+import socket
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
 from windows.poker_interface import PokerInterface  # Nutzt das gleiche Interface
+from zeroconf import Zeroconf, ServiceBrowser
+
+class MyListener:
+    def __init__(self):
+        self.server_address = None
+
+    def remove_service(self, zeroconf, type, name):
+        pass
+
+    def add_service(self, zeroconf, type, name):
+        info = zeroconf.get_service_info(type, name)
+        if info:
+            addr = socket.inet_ntoa(info.addresses[0])
+            print(f"Gefundener Server: {name} unter {addr}:{info.port}")
+            self.server_address = (addr, info.port)
+
+zeroconf = Zeroconf()
+listener = MyListener()
+browser = ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
+
+# Warte eine gewisse Zeit, damit der Dienst gefunden wird
+import time
+time.sleep(5)
+
+if listener.server_address:
+    server_ip, server_port = listener.server_address
+    print(f"Verbinde zu Server: {server_ip}:{server_port}")
+    # Hier kannst du dann die Verbindung zum Server herstellen, z.B.:
+    # asyncio.run_coroutine_threadsafe(self.listen_for_updates(), ...)
+
+zeroconf.close()
 
 class PokerClient(PokerInterface):
     def __init__(self):
@@ -55,6 +87,8 @@ class PokerClient(PokerInterface):
             print("Fehler bei der Umwandlung von minute/second:", e)
             minute, second = 0, 0
 
+
+        print(is_running,e)
         status_text = "►" if data.get("is_running", False) else "‖"
 
         if hasattr(self, "left_labels"):

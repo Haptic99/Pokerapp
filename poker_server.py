@@ -1,8 +1,38 @@
 import asyncio
 import websockets
 import json
+import socket
+from zeroconf import Zeroconf, ServiceInfo
 from data.timer_data import TimerData
 from data.blind_data import BlindData
+
+# Hole die lokale IP-Adresse
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+
+service_type = "_poker._tcp.local."  # Service-Typ (wähle einen eindeutigen Namen)
+service_name = "PokerServer._poker._tcp.local."  # Vollständiger Dienstname
+port = 8765  # Der Port, auf dem dein WebSocket-Server läuft
+
+info = ServiceInfo(
+    service_type,
+    service_name,
+    addresses=[socket.inet_aton(local_ip)],
+    port=port,
+    properties={},
+    server=f"{hostname}.local."
+)
+
+zeroconf = Zeroconf()
+print("Registriere den Service...")
+zeroconf.register_service(info)
+
+try:
+    # Hier startet dein Server, z. B. asyncio.run(main())
+    pass
+finally:
+    zeroconf.unregister_service(info)
+    zeroconf.close()
 
 clients = set()
 

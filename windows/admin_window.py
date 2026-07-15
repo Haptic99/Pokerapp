@@ -254,14 +254,18 @@ class AdminWindow(Gtk.Window):
 
     def on_timer_values_confirmed(self, minute, second):
         print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
-        # Korrigierter Aufruf:
-        asyncio.run_coroutine_threadsafe(
-            AdminWindow.send_update_timer(minute, second, TimerData.is_running),
-            self.poker_interface.loop
-        )
+        # Setze die globalen Timer-Daten auf die neuen Werte:
+        TimerData.minute = minute
+        TimerData.second = second
+        TimerData.start_minute = minute
+        TimerData.start_second = second
+        TimerData.is_running = True
 
     async def send_update_blinds(self, small_blind, big_blind):
-        uri = "ws://192.168.1.65:8765"
+        # Verwende den dynamisch entdeckten Serverhost, falls vorhanden
+        server_ip = getattr(self.poker_interface, "server_ip", "192.168.1.65")
+        server_port = getattr(self.poker_interface, "server_port", 8765)
+        uri = f"ws://{server_ip}:{server_port}"
         try:
             async with websockets.connect(uri) as websocket:
                 message = {
@@ -275,7 +279,13 @@ class AdminWindow(Gtk.Window):
 
     @staticmethod
     async def send_update_timer(minute, second, is_running):
-        uri = "ws://192.168.1.65:8765"
+        # Hier könnte ebenfalls ein dynamisch entdeckter Serverhost genutzt werden.
+        # Falls kein Wert verfügbar ist, verwende den Standard.
+        # (Da diese Methode als static definiert ist, kann man z.B. auf
+        # eine globale Variable zugreifen oder den Standardwert verwenden.)
+        server_ip = "192.168.1.65"  # Alternativ: hole diesen Wert aus einer Konfiguration
+        server_port = 8765
+        uri = f"ws://{server_ip}:{server_port}"
         try:
             async with websockets.connect(uri) as websocket:
                 message = {
