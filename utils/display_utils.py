@@ -71,10 +71,11 @@ def update_client_display(instance, data):
         timer_running = False
 
     current_time_str = format_timer_with_status(current_minute, current_second, timer_running)
-    if timer_running:
-        if hasattr(instance, "label_minute") and hasattr(instance, "label_second"):
-            instance.label_minute.set_text(f"{current_minute:02}")
-            instance.label_second.set_text(f"{current_second:02}")
-        elif hasattr(instance, "timer_labels") and "Momentane Zeit" in instance.timer_labels:
-            instance.timer_labels["Momentane Zeit"].set_text(current_time_str)
+
+    if hasattr(instance, "label_minute") and hasattr(instance, "label_second"):
+        instance.label_minute.set_text(f"{current_minute:02}")
+        instance.label_second.set_text(f"{current_second:02}")
+
+    if hasattr(instance, "timer_labels") and "Momentane Zeit" in instance.timer_labels:
+        instance.timer_labels["Momentane Zeit"].set_text(current_time_str)
 
