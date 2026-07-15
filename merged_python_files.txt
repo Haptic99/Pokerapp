@@ -1,0 +1,3249 @@
+# Inhaltsverzeichnis
+
+- /home/number3/Dokumente/1.3.6/poker_admin_client.py (Größe: 5644 Bytes, letzte Änderung: 2025-02-25 18:35:20)
+- /home/number3/Dokumente/1.3.6/poker_server.py (Größe: 7349 Bytes, letzte Änderung: 2025-02-25 18:09:25)
+- /home/number3/Dokumente/1.3.6/poker_normal_client.py (Größe: 5663 Bytes, letzte Änderung: 2025-02-25 18:34:15)
+- /home/number3/Dokumente/1.3.6/windows/blind_adjustment_window.py (Größe: 9948 Bytes, letzte Änderung: 2025-02-16 19:00:54)
+- /home/number3/Dokumente/1.3.6/windows/admin_window.py (Größe: 25800 Bytes, letzte Änderung: 2025-02-23 10:22:03)
+- /home/number3/Dokumente/1.3.6/windows/poker_interface.py (Größe: 18135 Bytes, letzte Änderung: 2025-02-16 19:01:10)
+- /home/number3/Dokumente/1.3.6/windows/poker_hands_window.py (Größe: 2201 Bytes, letzte Änderung: 2025-02-12 20:36:09)
+- /home/number3/Dokumente/1.3.6/windows/total_game_time_window.py (Größe: 17384 Bytes, letzte Änderung: 2025-02-16 19:15:52)
+- /home/number3/Dokumente/1.3.6/windows/player_position_window.py (Größe: 7152 Bytes, letzte Änderung: 2025-02-13 19:13:56)
+- /home/number3/Dokumente/1.3.6/windows/timer_setting_window.py (Größe: 18895 Bytes, letzte Änderung: 2025-02-24 22:29:06)
+- /home/number3/Dokumente/1.3.6/utils/zeroconf_utils.py (Größe: 729 Bytes, letzte Änderung: 2025-02-12 20:43:30)
+- /home/number3/Dokumente/1.3.6/utils/resources.py (Größe: 309 Bytes, letzte Änderung: 2025-02-08 10:56:00)
+- /home/number3/Dokumente/1.3.6/utils/persistent_ws_client.py (Größe: 920 Bytes, letzte Änderung: 2025-02-25 18:22:21)
+- /home/number3/Dokumente/1.3.6/utils/helpers.py (Größe: 1364 Bytes, letzte Änderung: 2025-02-08 10:56:00)
+- /home/number3/Dokumente/1.3.6/data/blind_data.py (Größe: 82 Bytes, letzte Änderung: 2025-02-08 10:56:00)
+- /home/number3/Dokumente/1.3.6/data/game_time_data.py (Größe: 175 Bytes, letzte Änderung: 2025-02-15 17:28:46)
+- /home/number3/Dokumente/1.3.6/data/timer_data.py (Größe: 251 Bytes, letzte Änderung: 2025-02-08 10:56:00)
+
+================================================================================
+
+# Datei: /home/number3/Dokumente/1.3.6/poker_admin_client.py
+* Größe: 5644 Bytes
+* Letzte Änderung: 2025-02-25 18:35:20
+
+```python
+import asyncio
+import websockets
+import json
+import socket
+import threading
+import gi
+from zeroconf import Zeroconf, ServiceBrowser
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GLib
+from windows.poker_interface import PokerInterface
+from utils.zeroconf_utils import MyListener
+from utils.persistent_ws_client import PersistentWebSocketClient
+
+class PokerAdminClient(PokerInterface):
+    """Der Poker‑Admin‑Client."""
+    def __init__(self):
+        super().__init__(is_admin=True)  # Admin‑Client hat Admin‑Privilegien
+
+        # Zeroconf‑Diensterkennung starten
+        self.server_address = self.find_server_via_zeroconf()
+
+        # Starte den Netzwerk‑Listener in einem eigenen Thread
+        self.start_async_loop()
+
+        self.uri = (
+            f"ws://{self.server_address[0]}:{self.server_address[1]}"
+            if self.server_address
+            else "ws://192.168.1.65:8765"
+        )
+        # Initialisiere den persistenten WebSocket‑Client ohne zusätzlichen Loop‑Parameter
+        self.persistent_ws = PersistentWebSocketClient(self.uri)
+
+    def find_server_via_zeroconf(self):
+        """Verwendet Zeroconf, um den Poker‑Server zu finden."""
+        zeroconf = Zeroconf()
+        listener = MyListener()
+        ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
+
+        print("🔍 Suche nach dem Server...")
+        import time
+        time.sleep(5)  # Warte einige Sekunden, um Dienste zu entdecken
+        zeroconf.close()
+
+        if listener.server_address:
+            print(f"✅ Server gefunden unter {listener.server_address}")
+            return listener.server_address
+        else:
+            print("❌ Kein Server gefunden. Verwende eine Standard-Adresse.")
+            return None  # Hier kann ein Fallback verwendet werden
+
+    def start_async_loop(self):
+        """Startet den asyncio‑Eventloop in einem separaten Thread."""
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.run_async_loop, daemon=True).start()
+        # Starte die Routine zum Abhören von Updates vom Server
+        asyncio.run_coroutine_threadsafe(self.listen_for_updates(), self.loop)
+
+    def run_async_loop(self):
+        """Führt den asyncio‑Eventloop aus."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    async def listen_for_updates(self):
+        """Empfängt regelmäßig Updates vom Server und aktualisiert das Interface."""
+        if self.server_address:
+            uri = f"ws://{self.server_address[0]}:{self.server_address[1]}"
+        else:
+            uri = "ws://192.168.1.65:8765"
+
+        while True:
+            try:
+                async with websockets.connect(uri) as websocket:
+                    print(f"Verbunden mit dem Server: {uri}")
+                    await websocket.send(json.dumps({"command": "get_status"}))
+                    async for message in websocket:
+                        data = json.loads(message)
+                        GLib.idle_add(self.update_display, data)
+            except Exception as e:
+                print(f"⚠ Verbindung zum Server fehlgeschlagen: {e}")
+                await asyncio.sleep(5)
+
+    def update_display(self, data):
+        # Aktualisiere Blinds
+        small_blind = data.get("small_blind") or "n.V."
+        big_blind = data.get("big_blind") or "n.V."
+        try:
+            blind_minute = int(data.get("blind_time_minute") or 0)
+            blind_second = int(data.get("blind_time_second") or 0)
+            timer_running = data.get("timer_running", False)
+        except Exception as e:
+            print("Fehler bei der Umwandlung der Blind-Timer Werte:", e)
+            blind_minute, blind_second = 0, 0
+            timer_running = False
+
+        status_text = "" if timer_running else "‖"
+
+        if hasattr(self, "left_labels"):
+            if "Small Blind" in self.left_labels:
+                self.left_labels["Small Blind"].set_text(small_blind)
+            if "Big Blind" in self.left_labels:
+                self.left_labels["Big Blind"].set_text(big_blind)
+            if "Nächste Blinderhöhung" in self.left_labels:
+                new_text = f"{status_text} {blind_minute:02}:{blind_second:02}"
+                self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
+        # Aktualisiere Spielzeit
+        if "game_time_minute" in data and "game_time_second" in data:
+            try:
+                game_minute = int(data.get("game_time_minute") or 0)
+                game_second = int(data.get("game_time_second") or 0)
+                game_running = data.get("game_time_running", False)
+            except Exception as e:
+                print("Fehler bei der Umwandlung der Spielzeit:", e)
+                game_minute, game_second = 0, 0
+                game_running = False
+
+            status_game = "" if game_running else "‖"
+            if hasattr(self, "info_labels") and "Spielzeit" in self.info_labels:
+                new_game_time = f"{status_game} {game_minute:02}:{game_second:02}"
+                self.info_labels["Spielzeit"].set_text(new_game_time)
+
+    async def send_update_to_server(self, command, payload):
+        message = json.dumps({"command": command, **payload})
+        try:
+            await self.persistent_ws.send(message)
+            print(f"Update an Server gesendet: {command}, {payload}")
+        except Exception as e:
+            print(f"⚠ Fehler beim Senden eines Updates: {e}")
+
+# Am Ende des Dokuments: instanziere den Admin-Client und starte die GUI
+if __name__ == '__main__':
+    admin_client = PokerAdminClient()
+    admin_client.show_all()
+    Gtk.main()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/poker_server.py
+* Größe: 7349 Bytes
+* Letzte Änderung: 2025-02-25 18:09:25
+
+```python
+import asyncio
+import websockets
+import json
+import socket
+from zeroconf import Zeroconf, ServiceInfo
+from data.timer_data import TimerData  # Timer-Daten
+from data.blind_data import BlindData  # Blind-Daten
+from data.game_time_data import GameTimeData  # Spielzeit-Daten
+
+# Lokale IP-Adresse ermitteln
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+
+# Zeroconf-Dienstinformationen
+service_type = "_poker._tcp.local."
+service_name = "PokerServer._poker._tcp.local."
+port = 8765  # Port, auf dem der WebSocket-Server läuft
+
+info = ServiceInfo(
+    service_type,
+    service_name,
+    addresses=[socket.inet_aton(local_ip)],
+    port=port,
+    properties={},
+    server=f"{hostname}.local."
+)
+
+# Zeroconf initialisieren und Service registrieren
+zeroconf = Zeroconf()
+print("Registriere den Zeroconf-Service...")
+zeroconf.register_service(info)
+
+clients = set()           # Verbundene Clients
+connected_players = []    # Liste der Spielernamen (Reihenfolge des Logins)
+
+async def update_loop():
+    """
+    Aggregierter Update-Loop:
+      - Aktualisiert (sofern aktiv) den Timer (Countdown) einmal pro Sekunde.
+      - Sendet dann einen Status-Update, der alle relevanten Daten enthält:
+          • Small Blind, Big Blind
+          • Aktuelle Blind-Zeit (blind_time_minute, blind_time_second)
+          • Konfigurierte Blind-Zeit (configured_blind_time_minute, configured_blind_time_second)
+          • Timerstatus (timer_running)
+          • Spielzeit (game_time_minute, game_time_second) und deren Status (game_time_running)
+          • Aktuelle Spielerliste
+    """
+    while True:
+        # Falls der Blind-Timer läuft, aktualisiere ihn (Countdown)
+        if TimerData.is_running:
+            if TimerData.minute == 0 and TimerData.second == 0:
+                TimerData.is_running = False
+            else:
+                if TimerData.second > 0:
+                    TimerData.second -= 1
+                else:
+                    TimerData.minute -= 1
+                    TimerData.second = 59
+
+        # Sende den aggregierten Status an alle Clients
+        await broadcast_status()
+        await asyncio.sleep(1)
+
+async def handle_client(websocket):
+    """
+    Verwaltet neue Client-Verbindungen.
+    Befehle wie "join", "start_timer" usw. aktualisieren den internen Status.
+    Ein direkter Broadcast erfolgt hier nicht – stattdessen sorgt der update_loop einmal pro Sekunde für die Updates.
+    """
+    clients.add(websocket)
+    # print(f"✅ Neuer Client verbunden von {websocket.remote_address}")
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+
+            # Verarbeitung von Join-/Leave-Aktionen
+            if data.get("action") == "join":
+                player_name = data.get("name", "Unbekannt")
+                if player_name not in connected_players:
+                    connected_players.append(player_name)
+                    print(f"✅ Spieler hinzugefügt: {player_name}")
+            elif data.get("action") == "leave":
+                player_name = data.get("name")
+                if player_name and player_name in connected_players:
+                    connected_players.remove(player_name)
+                    print(f"❌ Spieler entfernt: {player_name}")
+
+            # Timer-/Blindbefehle: Aktualisiere den internen Zustand
+            if data.get("command") == "start_timer":
+                TimerData.minute = int(data.get("minute", 0))
+                TimerData.second = int(data.get("second", 0))
+                TimerData.is_running = True
+                TimerData.is_paused = False
+            elif data.get("command") == "pause_timer":
+                TimerData.is_running = False
+                TimerData.is_paused = True
+            elif data.get("command") == "stop_timer":
+                TimerData.is_running = False
+                TimerData.is_paused = False
+                TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+                TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
+
+            # Weitere Befehle zur Aktualisierung einzelner Datenfelder
+            if "command" in data:
+                if data["command"] == "get_status":
+                    await send_status(websocket)
+                elif data["command"] == "update_blinds":
+                    BlindData.small_blind = data["small_blind"]
+                    BlindData.big_blind = data["big_blind"]
+                elif data["command"] == "update_timer":
+                    TimerData.minute = data["minute"]
+                    TimerData.second = data["second"]
+                    TimerData.is_running = data["is_running"]
+                elif data["command"] == "update_game_time":
+                    GameTimeData.minute = data["game_time_minute"]
+                    GameTimeData.second = data["game_time_second"]
+                    GameTimeData.is_running = data["is_running"]
+
+    except websockets.exceptions.ConnectionClosed:
+        print("❌ Client hat die Verbindung getrennt.")
+    finally:
+        clients.remove(websocket)
+
+async def send_status(websocket):
+    """
+    Sendet an einen einzelnen Client den aggregierten Status.
+    Dies wird für z. B. get_status-Anfragen verwendet.
+    """
+    status = {
+        "small_blind": BlindData.small_blind,
+        "big_blind": BlindData.big_blind,
+        "blind_time_minute": TimerData.minute,
+        "blind_time_second": TimerData.second,
+        "configured_blind_time_minute": TimerData.start_minute,
+        "configured_blind_time_second": TimerData.start_second,
+        "timer_running": TimerData.is_running,
+        "game_time_minute": GameTimeData.minute,
+        "game_time_second": GameTimeData.second,
+        "game_time_running": GameTimeData.is_running,
+        "players": connected_players
+    }
+    await websocket.send(json.dumps(status))
+
+async def broadcast_status():
+    """
+    Sendet den aggregierten Status an alle verbundenen Clients.
+    Hier werden alle Datenfelder zusammengeführt.
+    """
+    if clients:
+        status = {
+            "SB": BlindData.small_blind,
+            "BB": BlindData.big_blind,
+            "B_Min": TimerData.minute,
+            "B_Sec": TimerData.second,
+            "Configured_B_Min": TimerData.start_minute,
+            "Configured_B_Sec": TimerData.start_second,
+            "BT_Timer?": TimerData.is_running,
+            "GT_Min": GameTimeData.minute,
+            "GT_Sec": GameTimeData.second,
+            "GT_Running?": GameTimeData.is_running,
+            "Players": connected_players
+        }
+        # print("Sende aggregierten Spielstatus:", status)
+        await asyncio.gather(*[client.send(json.dumps(status)) for client in clients])
+
+async def main():
+    try:
+        async with websockets.serve(handle_client, "0.0.0.0", port):
+            print(f"Poker-Server läuft auf Port {port}")
+            # Starte den aggregierten Update-Loop
+            asyncio.create_task(update_loop())
+            await asyncio.Future()  # Hält den Server am Laufen
+    except Exception as e:
+        print(f"❌ Fehler beim Starten des Servers: {e}")
+    finally:
+        # Zeroconf-Deregistrierung und -Schließung
+        zeroconf.unregister_service(info)
+        zeroconf.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/poker_normal_client.py
+* Größe: 5663 Bytes
+* Letzte Änderung: 2025-02-25 18:34:15
+
+```python
+import asyncio
+import websockets
+import json
+import threading
+import gi
+import socket
+import time
+from zeroconf import Zeroconf, ServiceBrowser
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GLib
+from windows.poker_interface import PokerInterface  # Nutzt das gleiche Interface
+from utils.zeroconf_utils import MyListener
+from utils.persistent_ws_client import PersistentWebSocketClient
+
+class PokerClient(PokerInterface):
+    """Der Poker-Client."""
+    def __init__(self):
+        super().__init__(is_admin=False)  # ✅ Client ist KEIN Admin
+
+        # Entferne Admin-Button, falls vorhanden
+        if hasattr(self, "fixed") and hasattr(self, "administration_button"):
+            self.fixed.remove(self.administration_button)
+
+        # Zeroconf-Diensterkennung starten
+        self.server_address = self.find_server_via_zeroconf()
+
+        # Starte den Netzwerk-Listener in eigenem Thread (das startet einen eigenen asyncio-Loop)
+        self.start_async_loop()
+
+        self.uri = (
+            f"ws://{self.server_address[0]}:{self.server_address[1]}"
+            if self.server_address
+            else "ws://192.168.1.65:8765"
+        )
+        # Erstelle den persistenten WebSocket-Client (ohne eigenen Loop, da dieser schon im separaten Thread läuft)
+        self.persistent_ws = PersistentWebSocketClient(self.uri)
+
+    def find_server_via_zeroconf(self):
+        """Verwendet Zeroconf, um den Poker-Server zu finden."""
+        zeroconf = Zeroconf()
+        listener = MyListener()
+        browser = ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
+
+        print("🔍 Suche nach dem Server...")
+        time.sleep(5)  # Warte einige Sekunden, um Dienste zu entdecken
+        zeroconf.close()
+
+        if listener.server_address:
+            print(f"✅ Server gefunden unter {listener.server_address}")
+            return listener.server_address
+        else:
+            print("❌ Kein Server gefunden. Verwende eine Standard-Adresse.")
+            return None  # Es kann ein Fallback verwendet werden
+
+    def start_async_loop(self):
+        """Startet den asyncio-Eventloop in einem separaten Thread."""
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.run_async_loop, daemon=True).start()
+        # Starte die asynchrone Routine, die regelmäßig Status-Updates vom Server abholt
+        asyncio.run_coroutine_threadsafe(self.listen_for_updates(), self.loop)
+
+    def run_async_loop(self):
+        """Führt den asyncio-Eventloop aus."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    async def listen_for_updates(self):
+        """Empfängt regelmäßig Updates vom Server."""
+        if self.server_address:
+            uri = f"ws://{self.server_address[0]}:{self.server_address[1]}"
+        else:
+            uri = "ws://192.168.1.65:8765"
+
+        while True:
+            try:
+                async with websockets.connect(uri) as websocket:
+                    print(f"Verbunden mit dem Server: {uri}")
+                    await websocket.send(json.dumps({"command": "get_status"}))
+                    async for message in websocket:
+                        data = json.loads(message)
+                        # Update des Interface über GLib.idle_add, um den GTK-Hauptloop nicht zu blockieren
+                        GLib.idle_add(self.update_display, data)
+            except Exception as e:
+                print(f"⚠ Verbindung zum Server fehlgeschlagen: {e}")
+                await asyncio.sleep(5)
+
+    def update_display(self, data):
+        # Blinds und Timer (Nächste Blinderhöhung) aktualisieren
+        small_blind = data.get("small_blind") or "n.V."
+        big_blind = data.get("big_blind") or "n.V."
+        try:
+            blind_minute = int(data.get("blind_time_minute") or 0)
+            blind_second = int(data.get("blind_time_second") or 0)
+            timer_running = data.get("timer_running", False)
+        except Exception as e:
+            print("Fehler beim Umwandeln von blind_time_minute/second:", e)
+            blind_minute, blind_second = 0, 0
+            timer_running = False
+
+        status_text = "" if timer_running else "‖"
+
+        if hasattr(self, "left_labels"):
+            if "Small Blind" in self.left_labels:
+                self.left_labels["Small Blind"].set_text(small_blind)
+            if "Big Blind" in self.left_labels:
+                self.left_labels["Big Blind"].set_text(big_blind)
+            if "Nächste Blinderhöhung" in self.left_labels:
+                new_text = f"{status_text} {blind_minute:02}:{blind_second:02}"
+                self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
+        # Spielzeit aktualisieren:
+        if "game_time_minute" in data and "game_time_second" in data:
+            try:
+                game_minute = int(data.get("game_time_minute") or 0)
+                game_second = int(data.get("game_time_second") or 0)
+                game_running = data.get("game_time_running", False)
+            except Exception as e:
+                print("Fehler bei der Umwandlung der Spielzeit:", e)
+                game_minute, game_second = 0, 0
+                game_running = False
+
+            status_game = "" if game_running else "‖"
+            if hasattr(self, "info_labels") and "Spielzeit" in self.info_labels:
+                new_game_time = f"{status_game} {game_minute:02}:{game_second:02}"
+                self.info_labels["Spielzeit"].set_text(new_game_time)
+
+# Statt eines asynchronen main()-Loops wird hier einfach der Client instanziert
+if __name__ == '__main__':
+    client = PokerClient()
+    client.show_all()
+    Gtk.main()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/blind_adjustment_window.py
+* Größe: 9948 Bytes
+* Letzte Änderung: 2025-02-16 19:00:54
+
+```python
+# windows/blind_adjustment_window.py
+
+import gi
+import websockets
+import json
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk
+
+from utils.helpers import set_background_image
+from utils.resources import get_image_path
+from data.blind_data import BlindData
+
+class BlindAdjustmentWindow(Gtk.Window):
+    def __init__(self, parent, confirm_callback):
+        super().__init__(title="Blinds anpassen")
+        self.set_default_size(800, 480)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+
+        # Variable für Vollbildmodus initialisieren
+        self.is_fullscreen_mode = False
+
+        # Überprüfen, ob das Elternfenster im Vollbildmodus ist
+        if parent.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+        # Hintergrundbild setzen
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+
+        self.background_image_path = get_image_path("background_start.jpg")
+        set_background_image(self.overlay, self.background_image_path)
+
+        # Hauptcontainer erstellen
+        self.fixed = Gtk.Fixed()
+        self.overlay.add_overlay(self.fixed)
+
+        # Zellen für Small Blind und Big Blind erstellen
+        self.create_blind_cells()
+
+        # NumPad erstellen
+        self.create_numpad()
+
+        # "Zurück" Button hinzufügen
+        self.create_back_button()
+
+        # Aktuelles Eingabefeld (Small Blind oder Big Blind)
+        self.current_blind = None
+
+        # Flag, um zu verfolgen, ob eine neue Eingabe begonnen wurde
+        self.new_entry = False
+
+        # Bestätigungs-Callback
+        self.confirm_callback = confirm_callback
+
+        # Keybindings für Vollbildmodus und Escape
+        self.connect("key-press-event", self.on_key_press)
+
+    def create_blind_cells(self):
+        # Container für die Blinds auf der linken Seite
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_homogeneous(False)
+        self.fixed.put(vbox, 130, 100)  # Position anpassen
+
+        # Small Blind Titel
+        label_small_title = Gtk.Label(label="Small Blind")
+        label_small_title.get_style_context().add_class("blind-title")
+        vbox.pack_start(label_small_title, False, False, 5)
+
+        # Aktuelle Blind-Werte abrufen oder 'n.V.' setzen, wenn None
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "0"
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "0"
+
+        # Small Blind Wert
+        self.label_small_blind = Gtk.Label(label=small_blind_value)
+
+        self.label_small_blind.get_style_context().add_class("blind-value")
+        # Button um das Label, um Klicks zu erfassen
+        button_small_blind = Gtk.Button()
+        button_small_blind.add(self.label_small_blind)
+        button_small_blind.get_style_context().add_class("blind-button")
+        button_small_blind.connect("clicked", self.on_blind_click, "small")
+        vbox.pack_start(button_small_blind, False, False, 5)
+
+        # Big Blind Titel
+        label_big_title = Gtk.Label(label="Big Blind")
+        label_big_title.get_style_context().add_class("blind-title")
+        vbox.pack_start(label_big_title, False, False, 5)
+
+        # Big Blind Wert
+        self.label_big_blind = Gtk.Label(label=big_blind_value)
+        self.label_big_blind.get_style_context().add_class("blind-value")
+        # Button um das Label, um Klicks zu erfassen
+        button_big_blind = Gtk.Button()
+        button_big_blind.add(self.label_big_blind)
+        button_big_blind.get_style_context().add_class("blind-button")
+        button_big_blind.connect("clicked", self.on_blind_click, "big")
+        vbox.pack_start(button_big_blind, False, False, 5)
+
+    def create_numpad(self):
+        # NumPad auf der rechten Seite
+        grid = Gtk.Grid()
+        grid.set_row_spacing(10)
+        grid.set_column_spacing(10)
+        self.fixed.put(grid, 400, 50)  # Position anpassen
+
+        # Erstellen der Buttons
+        buttons = [
+            ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
+            ('4', 0, 1), ('5', 1, 1), ('6', 2, 1),
+            ('7', 0, 2), ('8', 1, 2), ('9', 2, 2),
+            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3),
+            ('Ok', 0, 4, 3)  # 'Ok' Button über drei Spalten
+        ]
+
+        for item in buttons:
+            label = item[0]
+            x = item[1]
+            y = item[2]
+            if len(item) == 4:
+                width = item[3]
+                height = 1
+            else:
+                width = 1
+                height = 1
+
+            button = Gtk.Button(label=label)
+            button.set_size_request(70 * width + 10 * (width - 1), 70)  # Größe anpassen
+            button.get_style_context().add_class("numpad-button")
+
+            # Spezielle Behandlung für den 'Ok' Button
+            if label == 'Ok':
+                button.connect("clicked", self.on_ok_button_click)
+            elif label == '←':
+                button.connect("clicked", self.on_backspace_button_click)
+            else:
+                button.connect("clicked", self.on_numpad_button_click)
+
+            grid.attach(button, x, y, width, height)
+
+    def create_back_button(self):
+        # "Schliessen" Button unten rechts hinzufügen
+        back_button = Gtk.Button(label="Schliessen")
+        back_button.set_size_request(100, 40)
+        back_button.connect("clicked", self.on_back_button_click)
+        back_button.get_style_context().add_class("button-custom")
+        self.fixed.put(back_button, 658, 416)
+        
+    def on_back_button_click(self, widget):
+        self.confirm_values()
+
+    def on_numpad_button_click(self, button):
+        label_text = button.get_label()
+        if self.current_blind is None:
+            return  # Kein Feld ausgewählt
+
+        if self.current_blind == "small":
+            current_label = self.label_small_blind
+        else:
+            current_label = self.label_big_blind
+
+        current_text = current_label.get_text()
+
+        if label_text == 'C':
+            # Beide Labels auf '0' setzen
+            self.label_small_blind.set_text('0')
+            self.label_big_blind.set_text('0')
+            self.new_entry = True  # Neue Eingabe beginnen
+        else:
+            if self.new_entry or current_text == '0':
+                # Wenn neue Eingabe oder aktueller Text '0' ist, überschreiben
+                new_text = label_text
+                self.new_entry = False  # Nach der ersten Eingabe auf False setzen
+            else:
+                # An bestehenden Wert anhängen
+                new_text = current_text + label_text
+
+            # Aktualisiere den Wert
+            current_label.set_text(new_text)
+            self.update_blinds(self.current_blind)
+
+    def on_ok_button_click(self, button):
+        self.confirm_values()
+
+    def on_backspace_button_click(self, button):
+        if self.current_blind is None:
+            return  # Kein Feld ausgewählt
+
+        if self.current_blind == "small":
+            current_label = self.label_small_blind
+        else:
+            current_label = self.label_big_blind
+
+        current_text = current_label.get_text()
+
+        # Entferne das letzte Zeichen
+        if len(current_text) > 1:
+            new_text = current_text[:-1]
+        else:
+            new_text = '0'
+            self.new_entry = True  # Neue Eingabe beginnen
+
+        current_label.set_text(new_text)
+        self.update_blinds(self.current_blind)
+
+    def update_blinds(self, source_blind):
+        try:
+            if source_blind == "small":
+                small_value = int(self.label_small_blind.get_text())
+                self.label_big_blind.set_text(str(small_value * 2))
+            elif source_blind == "big":
+                big_value = int(self.label_big_blind.get_text())
+                self.label_small_blind.set_text(str(big_value // 2))
+        except ValueError:
+            # Falls kein gültiger Integer eingegeben wurde
+            pass
+
+    def confirm_values(self):
+        small_blind = self.label_small_blind.get_text()
+        big_blind = self.label_big_blind.get_text()
+
+        # Werte in BlindData speichern
+        BlindData.small_blind = small_blind
+        BlindData.big_blind = big_blind
+
+        # Callback aufrufen, wenn vorhanden
+        if self.confirm_callback:
+            self.confirm_callback(small_blind, big_blind)
+
+        # Fenster schließen
+        self.close()
+
+    def on_blind_click(self, widget, blind_type):
+        # Setze das aktuelle Eingabefeld
+        self.current_blind = blind_type
+        # Setze die Flag für neue Eingabe
+        self.new_entry = True
+        # Optional: Visuelles Feedback hinzufügen
+        self.highlight_selected_blind()
+
+    def highlight_selected_blind(self):
+        # CSS-Klassen zum Hervorheben hinzufügen oder entfernen
+        if self.current_blind == "small":
+            self.label_small_blind.get_style_context().add_class("blind-selected")
+            self.label_big_blind.get_style_context().remove_class("blind-selected")
+        elif self.current_blind == "big":
+            self.label_big_blind.get_style_context().add_class("blind-selected")
+            self.label_small_blind.get_style_context().remove_class("blind-selected")
+
+    def on_key_press(self, widget, event):
+        """Keybindings für Escape und F11."""
+        if event.keyval == Gdk.KEY_Escape:
+            if self.is_fullscreen_mode:
+                self.unfullscreen()
+                self.is_fullscreen_mode = False
+            else:
+                self.close()
+        elif event.keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        """Schaltet zwischen Vollbild und Fenstergröße um."""
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/admin_window.py
+* Größe: 25800 Bytes
+* Letzte Änderung: 2025-02-23 10:22:03
+
+```python
+import gi
+import websockets
+import json
+import asyncio
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, GLib
+
+from utils.helpers import set_background_image
+from utils.resources import get_image_path
+from windows.player_position_window import PlayerPositionWindow
+from windows.blind_adjustment_window import BlindAdjustmentWindow
+from windows.timer_setting_window import TimerSettingWindow
+from data.blind_data import BlindData
+from data.timer_data import TimerData
+from data.game_time_data import GameTimeData
+
+
+class AdminWindow(Gtk.Window):
+    def __init__(self, poker_interface):
+        super().__init__(title="Admin Panel")
+        self.poker_interface = poker_interface  # Referenz auf das Poker-Interface speichern
+        self.set_default_size(800, 480)
+
+        # Spielerplatzierungsfenster-Referenz
+        self.player_window = None
+        self.persistent_websocket = None
+
+        # Setze das Admin-Fenster als untergeordnetes Fenster des Poker-Interfaces
+        if self.poker_interface:
+            self.set_transient_for(self.poker_interface)  
+
+        # Variable für Vollbildmodus initialisieren
+        self.is_fullscreen_mode = False
+
+        # Überprüfen, ob das Poker-Interface im Vollbildmodus ist
+        if self.poker_interface and self.poker_interface.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+        # Keybindings für Vollbildmodus und Escape
+        self.connect("key-press-event", self.on_key_press)
+
+        # Hintergrundbild setzen
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+
+        self.background_image_path = get_image_path("background_start.jpg")
+        set_background_image(self.overlay, self.background_image_path)
+
+        # Gtk.Fixed verwenden, um die Widgets an festen Positionen zu platzieren
+        self.fixed = Gtk.Fixed()
+        self.overlay.add_overlay(self.fixed)
+
+        # Benutzeroberfläche erstellen
+        self.create_ui()
+
+        # Starte einen Timer, der die Blind-Tabelle jede Sekunde aktualisiert
+        GLib.timeout_add_seconds(1, self.update_blinds_table)
+
+        # Timer für Admin-Fenster starten
+        self.start_admin_timer()
+        # ★ Hier starten wir auch den Spielzeit-Timer:
+        self.start_game_time_timer()
+
+
+    def create_ui(self):
+        # "Blinds anpassen" Button
+        adjust_blinds_button = Gtk.Button(label="Blinds anpassen")
+        adjust_blinds_button.set_size_request(165, 40)
+        adjust_blinds_button.connect("clicked", self.open_blind_adjustment_window)
+        adjust_blinds_button.connect("enter-notify-event", self.on_hover)
+        adjust_blinds_button.connect("leave-notify-event", self.on_leave)
+        adjust_blinds_button.get_style_context().add_class("button-custom")
+        self.fixed.put(adjust_blinds_button, 30, 20)
+        
+        # "Blinds Zeiten" Button
+        blinds_times_button = Gtk.Button(label="Blinds Zeiten")
+        blinds_times_button.set_size_request(165, 40)
+        blinds_times_button.connect("clicked", self.open_timer_setting_window)
+        blinds_times_button.connect("enter-notify-event", self.on_hover)
+        blinds_times_button.connect("leave-notify-event", self.on_leave)
+        blinds_times_button.get_style_context().add_class("button-custom")
+        self.fixed.put(blinds_times_button, 30, 120)
+
+        # Button "Spielzeit" (statt "Gesamtspielzeit")
+        spielzeit_button = Gtk.Button(label="Spielzeit")
+        spielzeit_button.set_size_request(165, 40)
+        spielzeit_button.connect("clicked", self.open_total_game_time_window)
+        spielzeit_button.get_style_context().add_class("button-custom")
+        self.fixed.put(spielzeit_button, 30, 220)  # Position anpassen
+
+        # "Spielerplatzierung" Button
+        player_position_button = Gtk.Button(label="Spielerplatzierung")
+        player_position_button.set_size_request(165, 40)
+        player_position_button.connect("clicked", self.open_player_position_window)
+        player_position_button.connect("enter-notify-event", self.on_hover)
+        player_position_button.connect("leave-notify-event", self.on_leave)
+        player_position_button.get_style_context().add_class("button-custom")
+        self.fixed.put(player_position_button, 605, 20)
+
+        # Tabelle für Blinds erstellen
+        self.create_blinds_table()
+
+        # Tabelle für Timer erstellen
+        self.create_timer_table()
+        
+        # Tabelle für Spielzeit erstellen
+        self.create_game_time_table()
+        
+        # "Zurück" Button unten rechts hinzufügen
+        back_button = Gtk.Button(label="Schliessen")
+        back_button.set_size_request(100, 40)
+        back_button.connect("clicked", self.on_back_button_click)
+        back_button.get_style_context().add_class("button-custom")
+        self.fixed.put(back_button, 658, 416)
+
+
+    def open_total_game_time_window(self, widget):
+        # Öffnet das Gesamtspielzeit-Fenster mit einem Dummy-Callback
+        total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(
+            self, confirm_callback=lambda *args: None
+        )
+        total_time_window.show_all()
+
+    def create_blinds_table(self):
+        # (Unverändert – siehe ursprünglichen Code)
+        self.blinds_table = Gtk.Grid()
+        self.blinds_table.set_row_spacing(5)
+        self.blinds_table.set_column_spacing(10)
+        self.blinds_table.set_margin_top(10)
+        self.blinds_table.set_margin_left(40)
+
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+
+        data = [
+            ("Small Blind", small_blind_value),
+            ("Big Blind", big_blind_value),
+        ]
+
+        self.blind_labels = {}
+
+        for row, (col1, col2) in enumerate(data):
+            label1 = Gtk.Label(label=col1)
+            label2 = Gtk.Label(label=col2)
+            label1.set_size_request(150, 25)
+            label2.set_size_request(70, 25)
+            label1.set_xalign(0.0)
+            label1.set_margin_left(6)
+            label2.set_xalign(1.0)
+            label2.set_margin_right(6)
+            label1.get_style_context().add_class("green-text")
+            label2.get_style_context().add_class("green-text")
+            self.blind_labels[col1] = label2
+
+            frame1 = Gtk.Frame()
+            frame1.add(label1)
+            frame1.get_style_context().add_class("table-cell")
+
+            frame2 = Gtk.Frame()
+            frame2.add(label2)
+            frame2.get_style_context().add_class("table-cell")
+
+            self.blinds_table.attach(frame1, 0, row, 1, 1)
+            self.blinds_table.attach(frame2, 1, row, 1, 1)
+
+        self.fixed.put(self.blinds_table, 180, 6)
+
+    def create_game_time_table(self):
+        from data.game_time_data import GameTimeData
+        self.game_time_table = Gtk.Grid()
+        self.game_time_table.set_row_spacing(5)
+        self.game_time_table.set_column_spacing(10)
+        self.game_time_table.set_margin_top(10)
+        self.game_time_table.set_margin_left(40)
+
+        # Hole die aktuelle Spielzeit
+        game_minute = GameTimeData.minute if GameTimeData.minute is not None else 0
+        game_second = GameTimeData.second if GameTimeData.second is not None else 0
+
+        # Formatierung der Spielzeit
+        game_time_str = f"{str(game_minute).zfill(2)}:{str(game_second).zfill(2)}"
+
+        # Daten: Eine Zeile – Titel "Spielzeit" und der Zeitwert
+        data = [
+            ("Spielzeit", game_time_str),
+        ]
+
+        self.game_time_labels = {}
+
+        for row, (title, time_str) in enumerate(data):
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=time_str)
+            label_title.set_size_request(150, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            
+            # Speichere das Zeit-Label, damit es später aktualisiert werden kann
+            self.game_time_labels[title] = label_time
+
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
+
+            self.game_time_table.attach(frame_title, 0, row, 1, 1)
+            self.game_time_table.attach(frame_time, 1, row, 1, 1)
+
+        # Positioniere die Tabelle – hier als Beispiel bei (180, 224)
+        self.fixed.put(self.game_time_table, 180, 224)
+
+    async def send_start_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "start_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": True
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Start Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Start-Timers: {e}")
+
+    async def send_pause_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "pause_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": False
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Pause Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Pause-Timers: {e}")
+
+    async def send_stop_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "stop_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": False
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Stop Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Stop-Timers: {e}")
+
+    def create_timer_table(self):
+        self.timer_table = Gtk.Grid()
+        self.timer_table.set_row_spacing(5)
+        self.timer_table.set_column_spacing(10)
+        self.timer_table.set_margin_top(10)
+        self.timer_table.set_margin_left(40)
+
+        # Hole die eingestellte Zeit (Startzeit)
+        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        set_second = TimerData.start_second if TimerData.start_second is not None else 0
+
+        # Hole die momentane Zeit
+        current_minute = TimerData.minute if TimerData.minute is not None else 0
+        current_second = TimerData.second if TimerData.second is not None else 0
+
+        # Formatierung der Zeiten
+        set_time_str = f"{str(set_minute).zfill(2)}:{str(set_second).zfill(2)}"
+        current_time_str = f"{str(current_minute).zfill(2)}:{str(current_second).zfill(2)}"
+
+        # Daten: Erste Zeile: eingestellte Zeit, Zweite Zeile: momentane Zeit
+        data = [
+            ("Eingestellte Zeit", set_time_str),
+            ("Momentane Zeit", current_time_str),
+        ]
+
+        self.timer_labels = {}
+
+        for row, (title, time_str) in enumerate(data):
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=time_str)
+            label_title.set_size_request(150, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            
+            # Speichere die Zeit-Labels in einem Dictionary, um sie später updaten zu können
+            self.timer_labels[title] = label_time
+
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
+
+            self.timer_table.attach(frame_title, 0, row, 1, 1)
+            self.timer_table.attach(frame_time, 1, row, 1, 1)
+
+        self.fixed.put(self.timer_table, 180, 110)
+
+
+
+    def open_player_position_window(self, widget):
+        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten vom Server."""
+        if hasattr(self, "player_window") and self.player_window:
+            self.player_window.present()
+            return
+
+        self.player_window = PlayerPositionWindow([])
+        self.player_window.connect("destroy", self.on_player_window_closed)
+        self.player_window.show_all()
+        self.update_player_window()
+
+
+    def on_player_window_closed(self, widget):
+        print("Spielerplatzierungsfenster geschlossen.")
+        self.player_window = None
+        if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
+            GLib.source_remove(self.update_timer_id)
+            print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
+            self.update_timer_id = None
+
+        async def close_websocket():
+            if self.persistent_websocket:
+                try:
+                    await self.persistent_websocket.close()
+                    print("WebSocket-Verbindung geschlossen.")
+                except Exception as e:
+                    print(f"⚠ Fehler beim Schließen der WebSocket-Verbindung: {e}")
+                finally:
+                    self.persistent_websocket = None
+
+        asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
+
+
+    def open_blind_adjustment_window(self, widget):
+        blind_window = BlindAdjustmentWindow(self, self.on_blind_values_confirmed)
+        blind_window.show_all()
+
+
+    def open_timer_setting_window(self, widget):
+        timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
+        timer_window.show_all()
+
+
+    def update_player_window(self):
+        async def fetch_players():
+            try:
+                server_ip, server_port = self.poker_interface.server_address
+                uri = f"ws://{server_ip}:{server_port}"
+
+                if not self.persistent_websocket:
+                    self.persistent_websocket = await websockets.connect(uri)
+                    print(f"WebSocket-Verbindung hergestellt: {uri}")
+
+                await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
+                message = await self.persistent_websocket.recv()
+                data = json.loads(message)
+                players = data.get("players", [])
+                print(f"Spieler erhalten: {players}")
+                GLib.idle_add(self.player_window.update_player_positions, players)
+
+            except Exception as e:
+                print(f"⚠ Fehler beim Abrufen der Spieler: {e}")
+                if self.persistent_websocket:
+                    await self.persistent_websocket.close()
+                    self.persistent_websocket = None
+
+        asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
+        if self.player_window:
+            self.update_timer_id = GLib.timeout_add_seconds(1, lambda: self.update_player_window() or False)
+        return False
+
+    def start_blinds_update(self):
+        # Sende initial die Blind-Daten und wiederhole das Senden z. B. alle 5 Sekunden
+        GLib.timeout_add_seconds(1, self.update_blinds)
+
+    def start_blinds_update_table(self):
+        # Sende initial die Blind-Daten und wiederhole das Senden z. B. alle 5 Sekunden
+        GLib.timeout_add_seconds(1, self.update_blinds_table)
+
+    def update_blinds(self):
+        # Hier werden die aktuellen Blind-Daten an den Server gesendet
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_blinds(BlindData.small_blind, BlindData.big_blind),
+            self.poker_interface.loop
+        )
+        return True  # Damit der Timeout-Callback weiterläuft
+
+
+    def start_admin_timer(self):
+        GLib.timeout_add_seconds(1, self.update_admin_timer)
+
+    def update_admin_timer(self):
+        if TimerData.is_running:
+            try:
+                current_minute = int(TimerData.minute or 0)
+                current_second = int(TimerData.second or 0)
+                set_minute = int(TimerData.start_minute or 0)
+                set_second = int(TimerData.start_second or 0)
+            except Exception as e:
+                print("Fehler beim Umwandeln der Timerwerte:", e)
+                current_minute, current_second, set_minute, set_second = 0, 0, 0, 0
+
+            if current_minute == 0 and current_second == 0:
+                TimerData.is_running = False
+            else:
+                if current_second > 0:
+                    current_second -= 1
+                else:
+                    current_minute -= 1
+                    current_second = 59
+
+            if hasattr(self, "timer_labels") and "Eingestellte Zeit" in self.timer_labels:
+                new_set_time = f"{set_minute:02}:{set_second:02}"
+                self.timer_labels["Eingestellte Zeit"].set_text(new_set_time)
+
+            if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
+                new_time = f"{current_minute:02}:{current_second:02}"
+                self.timer_labels["Momentane Zeit"].set_text(new_time)
+
+            asyncio.run_coroutine_threadsafe(
+                self.send_update_timer(current_minute, current_second, TimerData.is_running),
+                self.poker_interface.loop
+            )
+        return True
+
+    def start_game_time_timer(self):
+        self.game_time_timer_id = GLib.timeout_add_seconds(1, self.update_game_time)
+
+    def update_game_time(self):
+        from data.game_time_data import GameTimeData
+        # Nur hochzählen, wenn der Timer wirklich läuft:
+        if GameTimeData.is_running:
+            GameTimeData.second += 1
+            if GameTimeData.second >= 60:
+                GameTimeData.second = 0
+                GameTimeData.minute += 1
+
+        # Wähle das Symbol: "" wenn aktiv, ‖ wenn pausiert
+        status_symbol = "" if GameTimeData.is_running else "‖"
+        new_game_time = f"{status_symbol} {GameTimeData.minute:02}:{GameTimeData.second:02}"
+        self.game_time_labels["Spielzeit"].set_text(new_game_time)
+
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_game_time(GameTimeData.minute, GameTimeData.second),
+            self.poker_interface.loop
+        )
+        return True
+
+
+
+    async def send_update_game_time(self, minute, second):
+        import websockets, json
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_game_time",
+            "game_time_minute": minute,
+            "game_time_second": second,
+            "is_running": GameTimeData.is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+        except Exception as e:
+            print(f"Error sending game time update: {e}")
+
+    def on_blind_values_confirmed(self, small_blind, big_blind):
+        print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
+        from data.blind_data import BlindData  # Sicherstellen, dass BlindData importiert ist
+        BlindData.small_blind = small_blind
+        BlindData.big_blind = big_blind
+        # Sende die neuen Blind-Daten direkt an den Server
+        asyncio.run_coroutine_threadsafe(
+             self.send_update_blinds(small_blind, big_blind),
+             self.poker_interface.loop
+        )
+    
+    def on_timer_values_confirmed(self, minute, second):
+        print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
+        TimerData.minute = minute
+        TimerData.second = second
+        TimerData.start_minute = minute
+        TimerData.start_second = second
+        TimerData.is_running = True
+
+    async def send_update_blinds(self, small_blind, big_blind):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "update_blinds",
+             "small_blind": small_blind,
+             "big_blind": big_blind
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Blind update sent.")
+        except Exception as e:
+             print(f"Fehler beim Senden der Blinds: {e}")
+
+
+    async def send_update_timer(self, minute, second, is_running):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        try:
+            async with websockets.connect(uri) as websocket:
+                message = {
+                    "command": "update_timer",
+                    "minute": minute,
+                    "second": second,
+                    "is_running": is_running
+                }
+                await websocket.send(json.dumps(message))
+        except Exception as e:
+            print(f"⚠ Fehler beim Senden des Timers: {e}")
+
+    def update_blinds_table(self):
+        # Hole die aktuellen Werte – falls None, setze einen Standardwert
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+        # Aktualisiere die Labels, die du beim Erstellen der Blinds-Tabelle gespeichert hast
+        if "Small Blind" in self.blind_labels:
+            self.blind_labels["Small Blind"].set_text(small_blind_value)
+        if "Big Blind" in self.blind_labels:
+            self.blind_labels["Big Blind"].set_text(big_blind_value)
+        return True  # Wichtig, damit der Timer weiterläuft
+
+
+
+    def update_timer_table(self):
+        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        set_second = TimerData.start_second if TimerData.start_second is not None else 0
+
+        current_minute = TimerData.minute if TimerData.minute is not None else 0
+        current_second = TimerData.second if TimerData.second is not None else 0
+
+        set_time_str = f"{str(set_minute).zfill(2)}:{str(set_second).zfill(2)}"
+        current_time_str = f"{str(current_minute).zfill(2)}:{str(current_second).zfill(2)}"
+
+        if "Eingestellte Zeit" in self.timer_labels:
+            self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
+        if "Momentane Zeit" in self.timer_labels:
+            self.timer_labels["Momentane Zeit"].set_text(current_time_str)
+
+    def on_back_button_click(self, widget):
+        self.close()
+
+    def on_hover(self, widget, event):
+        widget.get_style_context().add_class("hovered")
+        if hasattr(self, 'hover_timer') and self.hover_timer:
+            GLib.source_remove(self.hover_timer)
+        self.hover_timer = GLib.timeout_add(500, self.remove_hover_effect, widget)
+
+    def on_leave(self, widget, event):
+        if hasattr(self, 'hover_timer') and self.hover_timer:
+            GLib.source_remove(self.hover_timer)
+        self.hover_timer = GLib.timeout_add(200, self.remove_hover_effect, widget)
+
+    def remove_hover_effect(self, widget):
+        widget.get_style_context().remove_class("hovered")
+        self.hover_timer = None
+        return False
+
+    def on_key_press(self, widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            if self.is_fullscreen_mode:
+                self.unfullscreen()
+                self.is_fullscreen_mode = False
+            else:
+                self.close()
+        elif event.keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.set_default_size(800, 480)
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+    def update_all_timer_displays(self):
+            minute = int(TimerData.minute) if TimerData.minute is not None else 0
+            second = int(TimerData.second) if TimerData.second is not None else 0
+            status_text = "" if TimerData.is_running else "‖"
+
+            if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
+                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+
+            if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
+                self.timer_labels["Momentane Zeit"].set_text(f"{status_text} {minute:02}:{second:02}")
+
+
+if __name__ == "__main__":
+    win = PokerInterface(is_admin=False)  # Normaler Client
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/poker_interface.py
+* Größe: 18135 Bytes
+* Letzte Änderung: 2025-02-16 19:01:10
+
+```python
+import gi
+import asyncio
+import websockets
+import json
+import os
+import threading
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
+from utils.helpers import load_css, set_background_image
+from utils.resources import get_image_path
+from data.blind_data import BlindData
+from data.timer_data import TimerData
+from data.game_time_data import GameTimeData
+from windows.admin_window import AdminWindow
+from windows.poker_hands_window import PokerHandsWindow
+
+
+class PokerInterface(Gtk.Window):
+    def __init__(self, is_admin=False):
+        super().__init__(title="Poker Interface")
+        self.set_default_size(800, 480)
+        self.is_admin = is_admin  # Admin-Status speichern
+
+        # Event-Loop für asynchrone WebSocket-Kommunikation
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.run_async_loop, daemon=True).start()
+
+        # Spielername (wird über den Namenseingabe-Bildschirm gesetzt)
+        self.player_name = None
+
+        # Hauptcontainer für das Interface
+        self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(self.main_box)
+
+        # Overlay für den Namenseingabe-Bildschirm und weitere Widgets
+        self.overlay = Gtk.Overlay()
+        self.main_box.pack_start(self.overlay, True, True, 0)
+
+        # Hintergrundbild setzen
+        self.background_image_path = get_image_path("background_start.jpg")
+        self.set_background_image(self.background_image_path)
+
+        # Fixed-Container für Buttons und Tabellen
+        self.fixed = Gtk.Fixed()
+        self.overlay.add_overlay(self.fixed)
+
+        # Buttons erstellen
+        self.create_buttons()
+
+        # Namenseingabe-Bildschirm erstellen (wird eingeblendet, solange kein Name vorhanden ist)
+        self.create_welcome_screen()
+
+        # Admin-Fenster-Referenz initialisieren
+        self.admin_window = None
+
+        # Vollbildmodus-Status (wichtig für Admin-Fenster)
+        self.is_fullscreen_mode = False
+
+        # Key-Press-Event verbinden
+        self.connect("key-press-event", self.on_key_press)
+
+        # CSS laden
+        self.load_css()
+
+        # Tabellen erstellen
+        self.create_table_left()
+        self.create_table_right()
+
+        # Timer starten
+        self.start_timer()
+
+        # Timer starten
+        self.start_game_time_timer()
+
+    def create_welcome_screen(self):
+        """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
+        Dabei werden alle anderen Buttons deaktiviert, sodass nur die Namenseingabe möglich ist."""
+        # Zuerst alle Buttons deaktivieren
+        self.disable_buttons()
+
+        # Falls bereits ein Bildschirm existiert, zerstören wir ihn
+        if hasattr(self, "welcome_box") and self.welcome_box:
+                self.welcome_box.destroy()
+
+        self.welcome_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.welcome_box.set_halign(Gtk.Align.CENTER)
+        self.welcome_box.set_valign(Gtk.Align.CENTER)
+        self.welcome_box.set_name("welcome_box")  # Für CSS
+
+        # Begrüßungstext
+        welcome_label = Gtk.Label(label="Willkommen! Bitte geben Sie Ihren Namen ein und klicken Sie auf Weiter.")
+        self.welcome_box.pack_start(welcome_label, True, True, 0)
+
+        # Eingabefeld für den Namen
+        self.name_entry = Gtk.Entry()
+        self.name_entry.set_placeholder_text("Name eingeben...")
+        self.name_entry.connect("activate", self.on_name_entered)
+        self.welcome_box.pack_start(self.name_entry, True, True, 0)
+
+        # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
+        weiter_button = Gtk.Button(label="Weiter")
+        weiter_button.connect("clicked", self.on_start_button_clicked)
+        self.welcome_box.pack_start(weiter_button, True, True, 0)
+
+        self.overlay.add_overlay(self.welcome_box)
+        self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
+
+
+    def on_start_button_clicked(self, button):
+        """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""
+        name = self.name_entry.get_text().strip()
+        if not name:
+            error_dialog = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.OK,
+                text="Fehler: Kein Name eingegeben!"
+            )
+            error_dialog.format_secondary_text("Bitte geben Sie einen Namen ein und klicken Sie auf Weiter.")
+            error_dialog.run()
+            error_dialog.destroy()
+            return
+
+        self.player_name = name
+        print(f"Benutzername: {name}")
+        # Entferne den Namenseingabe-Bildschirm
+        self.welcome_box.destroy()
+        # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
+        self.player_name_label.set_markup(f"<span foreground='#808080'><b>{name}</b></span>")
+        # Sende den Join-Request an den Server
+        asyncio.run_coroutine_threadsafe(self.send_join_message(), self.loop)
+        # Aktiviere alle Buttons (nun kann der Spieler interagieren)
+        self.enable_buttons()
+
+    def on_name_entered(self, entry):
+        """Bei Enter wird die gleiche Logik wie beim Klick auf 'Weiter' ausgeführt."""
+        self.on_start_button_clicked(None)
+
+    def run_async_loop(self):
+        """Startet den asynchronen Event-Loop im Hintergrund."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    def load_css(self):
+        """Lädt das CSS für die GUI."""
+        css_provider = Gtk.CssProvider()
+        css_path = os.path.join(os.path.dirname(__file__), "../styles/style.css")
+        with open(css_path, "r") as css_file:
+            css_data = css_file.read()
+            css_provider.load_from_data(css_data.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+    def set_background_image(self, image_path):
+        """Setzt ein Hintergrundbild."""
+        full_path = os.path.join(os.path.dirname(__file__), "../images", image_path)
+        if os.path.exists(full_path):
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 800, 480, False)
+            background = Gtk.Image.new_from_pixbuf(pixbuf)
+            self.overlay.add(background)
+            self.overlay.set_overlay_pass_through(background, True)
+
+    def disable_buttons(self):
+        """Deaktiviert alle Buttons im Fixed-Container."""
+        for child in self.fixed.get_children():
+            if isinstance(child, Gtk.Button):
+                child.set_sensitive(False)
+
+    def enable_buttons(self):
+        """Aktiviert alle Buttons im Fixed-Container."""
+        for child in self.fixed.get_children():
+            if isinstance(child, Gtk.Button):
+                child.set_sensitive(True)
+
+    def create_buttons(self):
+        # Button: Chipwerte
+        chipwerte_button = Gtk.Button(label="Chipwerte")
+        chipwerte_button.set_size_request(100, 40)
+        chipwerte_button.connect("clicked", self.button_chipwerte_click)
+        chipwerte_button.get_style_context().add_class("button-custom")
+        self.fixed.put(chipwerte_button, 15, 416)
+
+        # Button: Poker Hands
+        poker_hands_button = Gtk.Button(label="Poker Hands")
+        poker_hands_button.set_size_request(100, 40)
+        poker_hands_button.connect("clicked", self.button_poker_hands_click)
+        poker_hands_button.get_style_context().add_class("button-custom")
+        self.fixed.put(poker_hands_button, 150, 416)
+
+        # Falls Admin: Button "Administration"
+        if self.is_admin:
+            self.administration_button = Gtk.Button(label="Administration")
+            self.administration_button.set_size_request(100, 40)
+            self.administration_button.connect("clicked", self.button_administration_click)
+            self.administration_button.get_style_context().add_class("button-custom")
+            self.fixed.put(self.administration_button, 450, 416)
+
+        # Button "Platz verlassen" – immer mit diesem Label
+        self.leave_button = Gtk.Button(label="Platz verlassen")
+        self.leave_button.set_size_request(120, 40)
+        self.leave_button.get_style_context().add_class("button-custom")
+        self.leave_button.connect("clicked", self.on_leave_button_clicked)
+        # Dieser Button ist erst aktiv, wenn ein Name eingegeben wurde
+        self.leave_button.set_sensitive(False)
+        self.fixed.put(self.leave_button, 610, 416)
+
+    def on_leave_button_clicked(self, button):
+        """
+        Beim Klicken des "Platz verlassen"-Buttons wird ein Bestätigungsdialog angezeigt.
+        Bei Bestätigung:
+          - Wird der Leave-Request an den Server gesendet (der aktuell gespeicherte Name wird an die Serverfunktion übergeben).
+          - Der Namensanzeige in der Tabelle wird entfernt und der Spielername gelöscht.
+          - Anschließend wird der Namenseingabe-Bildschirm erneut eingeblendet und alle Buttons deaktiviert.
+        """
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Platz verlassen bestätigen?"
+        )
+        dialog.format_secondary_text("Möchten Sie wirklich Ihren Platz verlassen?")
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.YES:
+            print("Platz wird verlassen.")
+            # Speichere den aktuellen Namen in einer lokalen Variable
+            name_to_leave = self.player_name
+            # Sende den Leave-Request mit dem korrekten Namen an den Server
+            asyncio.run_coroutine_threadsafe(self.send_leave_message(name_to_leave), self.loop)
+            # Entferne den Namen aus der Info-Tabelle und lösche den gespeicherten Namen
+            self.player_name_label.set_text("")
+            self.player_name = None
+            # Deaktiviere alle Buttons, sodass der Benutzer nur noch den Namenseingabe-Bildschirm verwenden kann
+            self.disable_buttons()
+            # Blende den Namenseingabe-Bildschirm erneut ein
+            self.create_welcome_screen()
+        else:
+            # Falls abgebrochen, passiert nichts
+            pass
+
+    async def send_join_message(self):
+        """Sendet eine Join-Nachricht mit dem Namen an den Server."""
+        try:
+            uri = "ws://localhost:8765"  # ggf. anpassen
+            async with websockets.connect(uri) as websocket:
+                message = {"action": "join", "name": self.player_name}
+                await websocket.send(json.dumps(message))
+                print("Join-Nachricht gesendet.")
+        except Exception as e:
+            print(f"Fehler beim Senden der Join-Nachricht: {e}")
+
+    async def send_leave_message(self, name):
+        """Sendet eine Leave-Nachricht mit dem übergebenen Namen an den Server."""
+        try:
+            uri = "ws://localhost:8765"  # ggf. anpassen
+            async with websockets.connect(uri) as websocket:
+                message = {"action": "leave", "name": name}
+                await websocket.send(json.dumps(message))
+                print("Leave-Nachricht gesendet.")
+        except Exception as e:
+            print(f"Fehler beim Senden der Leave-Nachricht: {e}")
+
+    def button_chipwerte_click(self, widget):
+        print("Chipwerte-Button geklickt.")
+
+    def button_poker_hands_click(self, widget):
+        self.open_poker_hands_window()
+
+    def button_administration_click(self, widget):
+        self.open_admin_window()
+
+    def open_poker_hands_window(self):
+        """Öffnet das Poker Hands Fenster."""
+        poker_window = PokerHandsWindow(self)
+        if self.is_fullscreen_mode:
+            poker_window.fullscreen()
+        poker_window.show_all()
+
+    def open_admin_window(self):
+        """Öffnet das Admin-Fenster und speichert die Referenz."""
+        if self.admin_window is None:
+            self.admin_window = AdminWindow(self)
+            self.admin_window.show_all()
+            self.admin_window.connect("destroy", self.on_admin_window_closed)
+        else:
+            self.admin_window.present()
+
+    def on_admin_window_closed(self, widget):
+        """Setzt die Referenz zurück, wenn das Admin-Fenster geschlossen wird."""
+        self.admin_window = None
+
+    def create_table_left(self):
+        """Erstellt die linke Tabelle (z. B. Blinds und Timer)."""
+        self.table_left = Gtk.Grid()
+
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+
+        data = [
+            ("Blinds", ""),
+            ("Small Blind", small_blind_value),
+            ("Big Blind", big_blind_value),
+            ("Nächste Blinderhöhung", "00:00")
+        ]
+
+        self.left_labels = {}
+
+        for row, (col1, col2) in enumerate(data):
+            label1 = Gtk.Label(label=col1)
+            label2 = Gtk.Label(label=col2)
+
+            label1.set_size_request(185, 25)
+            label2.set_size_request(70, 25)
+
+            if row == 0:
+                label1.set_xalign(0.5)
+                frame1 = Gtk.Frame()
+                frame1.add(label1)
+                frame1.get_style_context().add_class("table-cell")
+                frame1.get_style_context().add_class("red-text")
+                self.table_left.attach(frame1, 0, row, 2, 1)
+            else:
+                label1.set_xalign(0.0)
+                label1.set_margin_left(6)
+                label2.set_xalign(1.0)
+                label2.set_margin_right(6)
+                label1.get_style_context().add_class("green-text")
+                label2.get_style_context().add_class("green-text")
+                self.left_labels[col1] = label2
+                print(f"🔧 Initialisiere Label: {col1}")
+                frame1 = Gtk.Frame()
+                frame1.add(label1)
+                frame1.get_style_context().add_class("table-cell")
+                frame2 = Gtk.Frame()
+                frame2.add(label2)
+                frame2.get_style_context().add_class("table-cell")
+                self.table_left.attach(frame1, 0, row, 1, 1)
+                self.table_left.attach(frame2, 1, row, 1, 1)
+
+        self.fixed.put(self.table_left, 15, 15)
+
+    def create_table_right(self):
+        table = Gtk.Grid()
+
+        # Überschrift "Infos" über beide Spalten
+        header_label = Gtk.Label(label="Infos")
+        header_label.set_xalign(0.5)
+        header_frame = Gtk.Frame()
+        header_frame.add(header_label)
+        header_frame.get_style_context().add_class("table-cell")
+        header_frame.get_style_context().add_class("red-text")
+        table.attach(header_frame, 0, 0, 2, 1)
+
+        # Zeile für den Spielernamen
+        self.player_name_label = Gtk.Label(label="")
+        self.player_name_label.set_xalign(0.5)
+        name_frame = Gtk.Frame()
+        name_frame.add(self.player_name_label)
+        name_frame.get_style_context().add_class("table-cell")
+        table.attach(name_frame, 0, 1, 2, 1)
+
+        # Weitere Infos: Hier fügen wir "Spielzeit" hinzu
+        data = [
+            ("Spielzeit", "n.V."),
+            ("Anzahl Runden", "n.V.")
+        ]
+        self.info_labels = {}
+        start_row = 2
+        for i, (title, value) in enumerate(data):
+            row = start_row + i
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=value)
+            label_title.set_size_request(185, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            self.info_labels[title] = label_time  # Speichern in einem Dictionary
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
+            table.attach(frame_title, 0, row, 1, 1)
+            table.attach(frame_time, 1, row, 1, 1)
+
+        self.fixed.put(table, 515, 15)
+
+    def on_key_press(self, widget, event):
+        """Keybindings für Escape und F11."""
+        if event.keyval == Gdk.KEY_Escape:
+            self.unfullscreen()
+        elif event.keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        """Schaltet zwischen Vollbild und Fenstergröße 800x480 um."""
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.set_default_size(800, 480)
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+    def start_timer(self):
+        """Startet den Timer im Poker-Interface."""
+        GLib.timeout_add_seconds(1, self.update_timer)
+        
+    def start_game_time_timer(self):
+        """Startet die Spielzeit im Poker-Interface."""
+        GLib.timeout_add_seconds(1, self.update_total_game_time)
+
+    def update_timer(self):
+        """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
+        if TimerData.is_running:
+            minute = int(TimerData.minute) if TimerData.minute is not None else 0
+            second = int(TimerData.second) if TimerData.second is not None else 0
+            self.left_labels["Nächste Blinderhöhung"].set_text(f"{minute:02}:{second:02}")
+        return True
+
+    def update_total_game_time(self):
+        game_time_minute = int(GameTimeData.minute) if GameTimeData.minute is not None else 0
+        game_time_second = int(GameTimeData.second) if GameTimeData.second is not None else 0
+        self.info_labels["Spielzeit"].set_text(f"{game_time_minute:02}:{game_time_second:02}")
+        return True
+
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/poker_hands_window.py
+* Größe: 2201 Bytes
+* Letzte Änderung: 2025-02-12 20:36:09
+
+```python
+# windows/poker_hands_window.py
+
+import gi
+import os
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GdkPixbuf
+from utils.helpers import set_background_image_in_overlay
+from utils.resources import get_image_path
+
+class PokerHandsWindow(Gtk.Window):
+    def __init__(self, parent):
+        super().__init__(title="Poker Hands")
+        self.set_default_size(800, 480)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+
+        overlay = Gtk.Overlay()
+        self.add(overlay)
+
+        # Set background image
+        set_background_image_in_overlay(overlay, get_image_path("background_start.jpg"))
+
+        # Add Poker Hands image
+        poker_hands_image_path = get_image_path("poker_hands.jpeg")
+        if os.path.exists(poker_hands_image_path):
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(poker_hands_image_path, 700, 400, False)
+            image = Gtk.Image.new_from_pixbuf(pixbuf)
+            overlay.add_overlay(image)
+            image.set_halign(Gtk.Align.CENTER)
+            image.set_valign(Gtk.Align.CENTER)
+
+        # Variable zum Speichern des Vollbildstatus
+        self.is_fullscreen_mode = False
+
+        # Key-Press-Event verbinden
+        self.connect("key-press-event", self.on_key_press)
+
+        # Close button
+        close_button = Gtk.Button(label="Schliessen")
+        close_button.set_size_request(80, 40)
+        close_button.connect("clicked", lambda w: self.close())
+        close_button.get_style_context().add_class("button-custom")
+
+        fixed = Gtk.Fixed()
+        overlay.add_overlay(fixed)
+        fixed.put(close_button, 658, 416)
+        
+    
+    def on_key_press(self, widget, event):
+        """Keybindings für Escape und F11 im Poker Hands Fenster."""
+        if event.keyval == Gtk.KEY_Escape:
+            self.unfullscreen()
+        elif event.keyval == Gtk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        """Schaltet zwischen Vollbild und Fenstergröße um."""
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/total_game_time_window.py
+* Größe: 17384 Bytes
+* Letzte Änderung: 2025-02-16 19:15:52
+
+```python
+import gi
+gi.require_version('Gtk', '3.0')
+import asyncio
+import json
+import websockets
+from gi.repository import Gtk, Gdk, GLib
+
+from utils.helpers import set_background_image
+from utils.resources import get_image_path
+from data.game_time_data import GameTimeData
+
+class TotalGameTimeWindow(Gtk.Window):
+    def __init__(self, parent, confirm_callback):
+        super().__init__(title="Spielzeit einstellen")
+        self.parent = parent  # Speichere parent als Instanzvariable!
+        self.set_default_size(800, 480)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+
+        self.timer_stopped = True
+
+        # Variable für Vollbildmodus initialisieren
+        self.is_fullscreen_mode = False
+        if parent.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+        # Hintergrundbild setzen
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+        self.background_image_path = get_image_path("background_start.jpg")
+        set_background_image(self.overlay, self.background_image_path)
+
+        # Hauptcontainer erstellen
+        self.fixed = Gtk.Fixed()
+        self.overlay.add_overlay(self.fixed)
+
+        # Zellen für Minuten und Sekunden erstellen
+        self.create_timer_cells()
+
+        # NumPad erstellen
+        self.create_numpad()
+
+        # "Schließen" Button hinzufügen
+        self.create_back_button()
+
+        # Aktuelles Eingabefeld (Minuten oder Sekunden)
+        self.current_time = None
+
+        # Flag, um zu verfolgen, ob eine neue Eingabe begonnen wurde
+        self.new_entry = False
+
+        # Bestätigungs-Callback
+        self.confirm_callback = confirm_callback
+
+        # Keybindings für Vollbildmodus und Escape
+        self.connect("key-press-event", self.on_key_press)
+
+        # Timer-Attribute
+        self.timer_id = None
+        self.is_running = False
+        self.is_paused = False
+
+        # Falls bereits ein Timer-Zustand vorliegt, diesen laden
+        self.load_existing_timer_state()
+
+    def load_existing_timer_state(self):
+        """Übernimmt den aktuellen Zustand des Timers, falls er läuft oder pausiert ist."""
+        if GameTimeData.is_running or GameTimeData.is_paused:
+            minute_value = GameTimeData.minute if GameTimeData.minute is not None else "00"
+            second_value = GameTimeData.second if GameTimeData.second is not None else "00"
+            self.label_minute.set_text(f"{int(minute_value):02}")
+            self.label_second.set_text(f"{int(second_value):02}")
+            self.disable_input_fields()
+            if GameTimeData.is_running:
+                self.is_running = True
+                self.start_timer()
+            elif GameTimeData.is_paused:
+                self.button_pause.set_sensitive(False)
+                self.button_start.set_sensitive(True)
+                self.button_stop.set_sensitive(True)
+
+    def create_timer_cells(self):
+        # Container für die Zeit auf der linken Seite
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_homogeneous(False)
+        self.fixed.put(vbox, 130, 100)
+
+        # Minuten Titel
+        label_minute_title = Gtk.Label(label="Minuten")
+        label_minute_title.get_style_context().add_class("time-title")
+        vbox.pack_start(label_minute_title, False, False, 5)
+
+        # Minuten Wert
+        self.label_minute = Gtk.Label(label="00")
+        self.label_minute.get_style_context().add_class("time-value")
+        self.button_minute = Gtk.Button()
+        self.button_minute.add(self.label_minute)
+        self.button_minute.get_style_context().add_class("time-button")
+        self.button_minute.connect("clicked", self.on_time_click, "minute")
+        vbox.pack_start(self.button_minute, False, False, 5)
+
+        # Sekunden Titel
+        label_second_title = Gtk.Label(label="Sekunden")
+        label_second_title.get_style_context().add_class("time-title")
+        vbox.pack_start(label_second_title, False, False, 5)
+
+        # Sekunden Wert
+        self.label_second = Gtk.Label(label="00")
+        self.label_second.get_style_context().add_class("time-value")
+        self.button_second = Gtk.Button()
+        self.button_second.add(self.label_second)
+        self.button_second.get_style_context().add_class("time-button")
+        self.button_second.connect("clicked", self.on_time_click, "second")
+        vbox.pack_start(self.button_second, False, False, 5)
+
+    def create_numpad(self):
+        # NumPad auf der rechten Seite
+        grid = Gtk.Grid()
+        grid.set_row_spacing(10)
+        grid.set_column_spacing(10)
+        self.fixed.put(grid, 400, 50)
+
+        buttons = [
+            ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
+            ('4', 0, 1), ('5', 1, 1), ('6', 2, 1),
+            ('7', 0, 2), ('8', 1, 2), ('9', 2, 2),
+            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3),
+            ('►', 0, 4), ('‖', 1, 4), ('■', 2, 4),
+        ]
+
+        for item in buttons:
+            label = item[0]
+            x = item[1]
+            y = item[2]
+            button = Gtk.Button(label=label)
+            button.set_size_request(70, 70)
+            button.get_style_context().add_class("numpad-button")
+            if label == '►':
+                button.connect("clicked", self.on_start_button_click)
+                self.button_start = button
+            elif label == '‖':
+                button.connect("clicked", self.on_pause_button_click)
+                self.button_pause = button
+                self.button_pause.set_sensitive(False)
+            elif label == '■':
+                button.connect("clicked", self.on_stop_button_click)
+                self.button_stop = button
+                self.button_stop.set_sensitive(False)
+            elif label == '←':
+                button.connect("clicked", self.on_backspace_button_click)
+            elif label == 'C':
+                button.connect("clicked", self.on_numpad_button_click)
+            else:
+                button.connect("clicked", self.on_numpad_button_click)
+            grid.attach(button, x, y, 1, 1)
+
+    def on_pause_button_click(self, button):
+        self.pause_timer()
+
+    def on_stop_button_click(self, button):
+        self.stop_timer()
+
+    def create_back_button(self):
+        back_button = Gtk.Button(label="Schließen")
+        back_button.set_size_request(100, 40)
+        back_button.connect("clicked", self.on_back_button_click)
+        back_button.get_style_context().add_class("button-custom")
+        self.fixed.put(back_button, 658, 416)
+
+    def on_back_button_click(self, widget):
+        self.close()
+
+    def stop_timer(self):
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+        self.is_running = False
+        self.is_paused = False
+
+        # Setze die Gesamtspielzeit zurück (GameTimeData)
+        self.label_minute.set_text("00")
+        self.label_second.set_text("00")
+        from data.game_time_data import GameTimeData
+        GameTimeData.minute = 0
+        GameTimeData.second = 0
+        GameTimeData.is_running = False
+        GameTimeData.is_paused = False
+
+        # Zusätzlich: Stoppe auch den Blinds-Timer (TimerData)
+        from data.timer_data import TimerData
+        TimerData.is_running = False
+        TimerData.is_paused = False
+        # Optional: Setze TimerData auf die ursprünglichen Startwerte zurück
+        TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
+
+        self.enable_input_fields()
+        self.button_start.set_sensitive(True)
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(False)
+        self.timer_stopped = True
+
+        # Sende beide Updates an den Server:
+        asyncio.run_coroutine_threadsafe(
+            self.send_final_timer_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
+            self.parent.poker_interface.loop
+        )
+        # Falls das Admin-Window bereits existiert, sende auch für TimerData:
+        if hasattr(self.parent, 'send_update_timer'):
+            asyncio.run_coroutine_threadsafe(
+                self.parent.send_update_timer(TimerData.minute, TimerData.second, TimerData.is_running),
+                self.parent.poker_interface.loop
+            )
+
+    async def send_final_game_time_update(self, minute, second, is_running):
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_game_time",
+            "game_time_minute": minute,
+            "game_time_second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Final game time update sent.")
+        except Exception as e:
+            print(f"Error sending final game time update: {e}")
+
+
+
+    def on_numpad_button_click(self, button):
+        label_text = button.get_label()
+        if self.current_time is None:
+            return
+        current_label = self.label_minute if self.current_time == "minute" else self.label_second
+        current_text = current_label.get_text()
+        if label_text == 'C':
+            current_label.set_text('00')
+            self.new_entry = True
+            current_label.get_style_context().remove_class("error")
+        else:
+            if self.new_entry or current_text == '00':
+                new_text = label_text
+                self.new_entry = False
+            else:
+                new_text = current_text + label_text
+            try:
+                new_value = int(new_text)
+                if self.current_time == "second" and new_value >= 60:
+                    new_value = 59
+                    new_text = '59'
+                    self.new_entry = True
+                    current_label.get_style_context().add_class("error")
+                    GLib.timeout_add(500, self.remove_error_class, current_label)
+                else:
+                    current_label.get_style_context().remove_class("error")
+            except ValueError:
+                new_value = 0
+                new_text = '00'
+                self.new_entry = True
+            current_label.set_text(f"{int(new_text):02}")
+
+    def remove_error_class(self, label):
+        label.get_style_context().remove_class("error")
+        return False
+
+    def on_backspace_button_click(self, button):
+        if self.current_time is None:
+            return
+        current_label = self.label_minute if self.current_time == "minute" else self.label_second
+        current_text = current_label.get_text()
+        new_text = current_text[:-1] if len(current_text) > 1 else '0'
+        if len(current_text) <= 1:
+            self.new_entry = True
+        current_label.set_text(f"{int(new_text):02}")
+
+    def on_time_click(self, widget, time_type):
+        self.current_time = time_type
+        self.new_entry = True
+        self.highlight_selected_timer()
+
+    def highlight_selected_timer(self):
+        if self.current_time == "minute":
+            self.label_minute.get_style_context().add_class("time-selected")
+            self.label_second.get_style_context().remove_class("time-selected")
+        elif self.current_time == "second":
+            self.label_second.get_style_context().add_class("time-selected")
+            self.label_minute.get_style_context().remove_class("time-selected")
+
+    def on_key_press(self, widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            if self.is_fullscreen_mode:
+                self.unfullscreen()
+                self.is_fullscreen_mode = False
+            else:
+                self.close()
+        elif event.keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+    # Timer-Kontrollmethoden (hier für einen Timer, der hochzählt)
+    def on_start_button_click(self, button):
+        if not self.is_running:
+            self.start_timer()
+
+    def start_timer(self):
+        if self.timer_stopped:
+            minute = self.label_minute.get_text()
+            second = self.label_second.get_text()
+            GameTimeData.minute = int(minute)
+            GameTimeData.second = int(second)
+        self.is_running = True
+        GameTimeData.is_running = True
+        GameTimeData.is_paused = False
+        self.timer_stopped = False
+        self.disable_input_fields()
+        self.remove_timer_focus()
+        self.button_start.set_sensitive(False)
+        self.button_pause.set_sensitive(True)
+        self.button_stop.set_sensitive(True)
+        self.timer_id = GLib.timeout_add_seconds(1, self.update_timer)
+
+    def pause_timer(self):
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+        self.is_running = False
+        self.is_paused = True
+        from data.game_time_data import GameTimeData
+        GameTimeData.is_running = False
+        GameTimeData.is_paused = True
+
+        self.button_start.set_sensitive(True)
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(True)
+
+        # Sende sofort ein Update an den Server, dass der Timer pausiert ist.
+        asyncio.run_coroutine_threadsafe(
+            self.send_pause_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
+            self.parent.poker_interface.loop
+        )
+        print("Pause-Taste gedrückt, Status gesendet:", GameTimeData.is_running)
+
+    def stop_timer(self):
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+        self.is_running = False
+        self.is_paused = False
+
+        # Setze die Gesamtspielzeit zurück (GameTimeData)
+        self.label_minute.set_text("00")
+        self.label_second.set_text("00")
+        from data.game_time_data import GameTimeData
+        GameTimeData.minute = 0
+        GameTimeData.second = 0
+        GameTimeData.is_running = False
+        GameTimeData.is_paused = False
+
+        self.enable_input_fields()
+        self.button_start.set_sensitive(True)
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(False)
+        self.timer_stopped = True
+
+        # Sende das finale Update an den Server:
+        asyncio.run_coroutine_threadsafe(
+            self.send_final_timer_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
+            self.parent.poker_interface.loop
+        )
+
+        # (Optional) Aktualisiere auch die Anzeige im übergeordneten Fenster
+        if hasattr(self.parent, 'update_all_timer_displays'):
+            GLib.idle_add(self.parent.update_all_timer_displays)
+
+
+    async def send_pause_update(self, minute, second, is_running):
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_game_time",
+            "game_time_minute": minute,
+            "game_time_second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Pause update sent for game time.")
+        except Exception as e:
+            print(f"Error sending pause update: {e}")
+
+    async def send_final_timer_update(self, minute, second, is_running):
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_game_time",
+            "game_time_minute": minute,
+            "game_time_second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Final game time update sent.")
+        except Exception as e:
+            print(f"Error sending final game time update: {e}")
+
+
+    def update_timer(self):
+        minute = int(self.label_minute.get_text())
+        second = int(self.label_second.get_text())
+        # Hier wird die Zeit um 1 Sekunde erhöht
+        second += 1
+        if second >= 60:
+            minute += 1
+            second = 0
+        self.label_minute.set_text(f"{minute:02}")
+        self.label_second.set_text(f"{second:02}")
+        GameTimeData.minute = minute
+        GameTimeData.second = second
+        return True
+
+    def disable_input_fields(self):
+        self.button_minute.set_sensitive(False)
+        self.button_second.set_sensitive(False)
+        self.button_minute.set_can_focus(False)
+        self.button_second.set_can_focus(False)
+
+    def enable_input_fields(self):
+        self.button_minute.set_sensitive(True)
+        self.button_second.set_sensitive(True)
+        self.button_minute.set_can_focus(True)
+        self.button_second.set_can_focus(True)
+
+    def remove_timer_focus(self):
+        self.fixed.grab_focus()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/player_position_window.py
+* Größe: 7152 Bytes
+* Letzte Änderung: 2025-02-13 19:13:56
+
+```python
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf
+from utils.resources import get_image_path
+
+
+class PlayerPositionWindow(Gtk.Window):
+        def __init__(self, players):
+                super().__init__(title="Spielerplatzierung")
+                self.set_default_size(800, 480)
+
+                # Signal zum Schließen des Fensters
+                self.connect("destroy", self.on_close)
+
+                # Hauptcontainer (VBox für Layout)
+                self.main_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+                self.add(self.main_container)
+
+                # Overlay für den Hintergrund und die Spielerplätze
+                self.overlay = Gtk.Overlay()
+                self.main_container.pack_start(self.overlay, True, True, 0)
+
+                # Hintergrundbild setzen
+                self.background_image_path = get_image_path("background_start.jpg")
+                self.set_background_image(self.background_image_path)
+
+                # Pokertisch hinzufügen (grüne Matte)
+                self.add_pokertisch()
+
+                # Variable zum Speichern des Vollbildstatus
+                self.is_fullscreen_mode = False
+
+                # Key-Press-Event verbinden
+                self.connect("key-press-event", self.on_key_press)
+
+                # Spielerplätze hinzufügen
+                self.initialize_player_positions()
+
+                # Spielerplätze mit Spielern aktualisieren
+                self.update_player_positions(players)
+
+                # Schließen-Button hinzufügen
+                self.add_close_button()
+
+        def on_key_press(self, widget, event):
+                if event.keyval == Gdk.KEY_Escape:
+                        if self.is_fullscreen_mode:
+                                self.unfullscreen()
+                                self.is_fullscreen_mode = False
+                        else:
+                                self.close()
+                elif event.keyval == Gdk.KEY_F11:
+                        self.toggle_fullscreen()
+
+        def on_close(self, widget):
+                """Behandelt das Schließen des Fensters."""
+                print("Spielerplatzierungsfenster wurde geschlossen.")
+
+        def set_background_image(self, image_path):
+                """Setzt das Hintergrundbild."""
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(image_path, 800, 480, False)
+                background_image = Gtk.Image.new_from_pixbuf(pixbuf)
+                self.overlay.add_overlay(background_image)
+
+        def add_pokertisch(self):
+                """Zeichnet den Pokertisch (grüne Matte) mit dynamischer Größe."""
+                pokertisch_image_path = get_image_path("pokertisch.png")  # Grüne Matte
+
+                # Fenstergröße abrufen
+                window_width, window_height = self.get_size()
+                
+                # Dynamische Größe für den Tisch (100% der Breite und Höhe des Fensters)
+                table_width = int(window_width * 1)
+                table_height = int(window_height * 1)
+
+                # Bild skalieren und hinzufügen
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pokertisch_image_path, table_width, table_height, False)
+                pokertisch_image = Gtk.Image.new_from_pixbuf(pixbuf)
+
+                # Positionierung in der Mitte
+                pokertisch_image.set_halign(Gtk.Align.CENTER)
+                pokertisch_image.set_valign(Gtk.Align.CENTER)
+                self.overlay.add_overlay(pokertisch_image)
+
+        def initialize_player_positions(self):
+                """Initialisiert alle Spielerpositionen mit 'Nicht belegt'."""
+                # Fenster-Mitte berechnen
+                center_x, center_y = 400, 240  # Beispiel: Fenstergröße 800x480
+
+                # Hardcodierte Positionen relativ zur Mitte
+                self.positions = [
+                        (0, 140),  # Platz 1 (oben Mitte)
+                        (-270, 125),  # Platz 2 (rechts oben)
+                        (-340, 0),    # Platz 3 (rechts unten)
+                        (-270, -115), # Platz 4 (unten Mitte)
+                        (0, -130),    # Platz 5 (links unten)
+                        (270, -115),  # Platz 6 (links oben)
+                        (340, 0),     # Platz 7 (oben links)
+                        (270, 125)    # Platz 8 (oben rechts)
+                ]
+
+                # Spielerplätze initialisieren
+                self.player_labels = []  # Liste, um die Label-Widgets zu speichern
+                for i, (x, y) in enumerate(self.positions):
+                        # Positionen relativ zur Mitte berechnen
+                        adjusted_x = x + center_x
+                        adjusted_y = y + center_y
+
+                        # Spielername (Label), standardmäßig "Nicht belegt"
+                        player_label = Gtk.Label(label="Nicht belegt")
+                        player_label.set_name("player-label")  # Name für CSS
+                        player_label.get_style_context().add_class("player-name")
+                        player_label.set_xalign(0)  # Horizontale Zentrierung
+                        player_label.set_yalign(0)  # Vertikale Zentrierung
+
+                        # Position setzen
+                        player_label.set_margin_top(adjusted_y - 15)  # Feinanpassung für vertikale Ausrichtung
+                        player_label.set_margin_left(adjusted_x - 25)  # Feinanpassung für horizontale Ausrichtung
+
+                        # Label hinzufügen
+                        self.overlay.add_overlay(player_label)
+                        self.player_labels.append(player_label)  # Label speichern
+
+        def update_player_positions(self, players):
+                """Aktualisiert die Spielerplätze basierend auf der Spielerliste."""
+                for i, player_label in enumerate(self.player_labels):
+                        if i < len(players):
+                                # Spielername anzeigen
+                                player_label.set_text(players[i])
+                        else:
+                                # Platz ist leer
+                                player_label.set_text("Nicht belegt")
+
+        def add_close_button(self):
+            """Fügt einen Schließen-Button hinzu."""
+            close_button = Gtk.Button(label="Schließen")
+            close_button.set_size_request(100, 40)
+            close_button.get_style_context().add_class("button-custom")
+            close_button.connect("clicked", self.on_close_button_clicked)
+            
+            # Falls noch kein Fixed-Container existiert, erstelle einen und füge ihn zum Overlay hinzu
+            if not hasattr(self, "fixed"):
+                self.fixed = Gtk.Fixed()
+                self.overlay.add_overlay(self.fixed)
+            
+            # Positioniere den Button genau wie im Admin-Fenster (Beispielkoordinaten)
+            self.fixed.put(close_button, 658, 416)
+
+
+        def on_close_button_clicked(self, widget):
+                """Schließt das Fenster."""
+                print("Schließen-Button gedrückt")
+                self.destroy()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/windows/timer_setting_window.py
+* Größe: 18895 Bytes
+* Letzte Änderung: 2025-02-24 22:29:06
+
+```python
+import gi
+gi.require_version('Gtk', '3.0')
+import asyncio
+import json
+import websockets
+from gi.repository import Gtk, Gdk, GLib
+
+from utils.helpers import set_background_image
+from utils.resources import get_image_path
+from data.timer_data import TimerData
+
+class TimerSettingWindow(Gtk.Window):
+    def __init__(self, parent, confirm_callback):
+        super().__init__(title="Timer einstellen")
+        self.parent = parent  # ✅ Hier speichern wir parent als Instanzvariable!
+        self.set_default_size(800, 480)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+
+        self.timer_stopped = True  
+
+        # Variable für Vollbildmodus initialisieren
+        self.is_fullscreen_mode = False
+
+        # Überprüfen, ob das Elternfenster im Vollbildmodus ist
+        if parent.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+        # Hintergrundbild setzen
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+
+        self.background_image_path = get_image_path("background_start.jpg")
+        set_background_image(self.overlay, self.background_image_path)
+
+        # Hauptcontainer erstellen
+        self.fixed = Gtk.Fixed()
+        self.overlay.add_overlay(self.fixed)
+
+        # Zellen für Minuten und Sekunden erstellen
+        self.create_timer_cells()
+
+        # NumPad erstellen
+        self.create_numpad()
+
+        # "Zurück" Button hinzufügen
+        self.create_back_button()
+
+        # Aktuelles Eingabefeld (Minuten oder Sekunden)
+        self.current_time = None
+
+        # Flag, um zu verfolgen, ob eine neue Eingabe begonnen wurde
+        self.new_entry = False
+
+        # Bestätigungs-Callback
+        self.confirm_callback = confirm_callback
+
+        # Keybindings für Vollbildmodus und Escape
+        self.connect("key-press-event", self.on_key_press)
+
+        # Timer-Attribute
+        self.timer_id = None
+        self.is_running = False
+        self.is_paused = False
+
+        # Wenn der Timer bereits läuft, übernimm die aktuellen Werte
+        self.load_existing_timer_state()
+
+    def load_existing_timer_state(self):
+        """Übernimmt den aktuellen Zustand des Timers, falls er läuft."""
+        if TimerData.is_running or TimerData.is_paused:
+            # Timer läuft oder ist pausiert, setze die aktuellen Werte
+            minute_value = TimerData.minute if TimerData.minute is not None else "00"
+            second_value = TimerData.second if TimerData.second is not None else "00"
+            self.label_minute.set_text(f"{int(minute_value):02}")
+            self.label_second.set_text(f"{int(second_value):02}")
+
+            # Timer-Felder deaktivieren, wenn der Timer läuft
+            self.disable_input_fields()
+
+            # Timer läuft weiter
+            if TimerData.is_running:
+                self.is_running = True
+                self.start_timer()
+            elif TimerData.is_paused:
+                # Der Timer ist pausiert, aktiviere den Start-Button zum Fortsetzen
+                self.button_pause.set_sensitive(False)
+                self.button_start.set_sensitive(True)
+                self.button_stop.set_sensitive(True)
+
+    def create_timer_cells(self):
+        # Container für die Zeit auf der linken Seite
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_homogeneous(False)
+        self.fixed.put(vbox, 130, 100)  # Position anpassen
+
+        # Minuten Titel
+        label_minute_title = Gtk.Label(label="Minuten")
+        label_minute_title.get_style_context().add_class("time-title")
+        vbox.pack_start(label_minute_title, False, False, 5)
+
+        # Minuten Wert
+        self.label_minute = Gtk.Label(label="00")
+        self.label_minute.get_style_context().add_class("time-value")
+
+        # Button um das Label, um Klicks zu erfassen
+        self.button_minute = Gtk.Button()
+        self.button_minute.add(self.label_minute)
+        self.button_minute.get_style_context().add_class("time-button")
+        self.button_minute.connect("clicked", self.on_time_click, "minute")
+        vbox.pack_start(self.button_minute, False, False, 5)
+
+        # Sekunden Titel
+        label_second_title = Gtk.Label(label="Sekunden")
+        label_second_title.get_style_context().add_class("time-title")
+        vbox.pack_start(label_second_title, False, False, 5)
+
+        # Sekunden Wert
+        self.label_second = Gtk.Label(label="00")
+        self.label_second.get_style_context().add_class("time-value")
+
+        # Button um das Label, um Klicks zu erfassen
+        self.button_second = Gtk.Button()
+        self.button_second.add(self.label_second)
+        self.button_second.get_style_context().add_class("time-button")
+        self.button_second.connect("clicked", self.on_time_click, "second")
+        vbox.pack_start(self.button_second, False, False, 5)
+
+    def create_numpad(self):
+        # NumPad auf der rechten Seite
+        grid = Gtk.Grid()
+        grid.set_row_spacing(10)
+        grid.set_column_spacing(10)
+        self.fixed.put(grid, 400, 50)  # Position anpassen
+
+        # Buttons erstellen
+        buttons = [
+            ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
+            ('4', 0, 1), ('5', 1, 1), ('6', 2, 1),
+            ('7', 0, 2), ('8', 1, 2), ('9', 2, 2),
+            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3),
+            ('►', 0, 4), ('‖', 1, 4), ('■', 2, 4),
+        ]
+
+        for item in buttons:
+            label = item[0]
+            x = item[1]
+            y = item[2]
+
+            button = Gtk.Button(label=label)
+            button.set_size_request(70, 70)  # Größe anpassen
+            button.get_style_context().add_class("numpad-button")
+
+            if label == '►':
+                button.connect("clicked", self.on_start_button_click)
+                self.button_start = button  # Start-Button zuweisen
+            elif label == '‖':
+                button.connect("clicked", self.on_pause_button_click)
+                self.button_pause = button  # Pause-Button zuweisen
+                self.button_pause.set_sensitive(False)  # Anfangs deaktiviert
+            elif label == '■':
+                button.connect("clicked", self.on_stop_button_click)
+                self.button_stop = button  # Stop-Button zuweisen
+                self.button_stop.set_sensitive(False)  # Anfangs deaktiviert
+            elif label == '←':
+                button.connect("clicked", self.on_backspace_button_click)
+            elif label == 'C':
+                button.connect("clicked", self.on_numpad_button_click)
+            else:
+                button.connect("clicked", self.on_numpad_button_click)
+
+            grid.attach(button, x, y, 1, 1)
+
+    def create_back_button(self):
+        # "Zurück" Button unten rechts hinzufügen
+        back_button = Gtk.Button(label="Schliessen")
+        back_button.set_size_request(100, 40)
+        back_button.connect("clicked", self.on_back_button_click)
+        back_button.get_style_context().add_class("button-custom")
+        self.fixed.put(back_button, 658, 416)
+
+    def on_back_button_click(self, widget):
+        self.close()
+
+    def on_numpad_button_click(self, button):
+        label_text = button.get_label()
+        if self.current_time is None:
+            return  # Kein Feld ausgewählt
+
+        if self.current_time == "minute":
+            current_label = self.label_minute
+        else:
+            current_label = self.label_second
+
+        current_text = current_label.get_text()
+
+        if label_text == 'C':
+            current_label.set_text('00')
+            self.new_entry = True
+            current_label.get_style_context().remove_class("error")
+        else:
+            if self.new_entry or current_text == '00':
+                new_text = label_text
+                self.new_entry = False
+            else:
+                new_text = current_text + label_text
+
+            try:
+                new_value = int(new_text)
+                if new_value > 60:
+                    new_value = 60
+                    new_text = '60'
+                    self.new_entry = True
+                    current_label.get_style_context().add_class("error")
+                    GLib.timeout_add(500, self.remove_error_class, current_label)
+                else:
+                    current_label.get_style_context().remove_class("error")
+            except ValueError:
+                new_value = 0
+                new_text = '00'
+                self.new_entry = True
+
+            current_label.set_text(f"{int(new_text):02}")
+
+    def remove_error_class(self, label):
+        label.get_style_context().remove_class("error")
+        return False
+
+    def on_backspace_button_click(self, button):
+        if self.current_time is None:
+            return  # Kein Feld ausgewählt
+
+        if self.current_time == "minute":
+            current_label = self.label_minute
+        else:
+            current_label = self.label_second
+
+        current_text = current_label.get_text()
+
+        if len(current_text) > 1:
+            new_text = current_text[:-1]
+        else:
+            new_text = '0'
+            self.new_entry = True
+
+        current_label.set_text(new_text)
+
+    def on_time_click(self, widget, time_type):
+        self.current_time = time_type
+        self.new_entry = True
+        self.highlight_selected_timer()
+
+    def highlight_selected_timer(self):
+        if self.current_time == "minute":
+            self.label_minute.get_style_context().add_class("time-selected")
+            self.label_second.get_style_context().remove_class("time-selected")
+        elif self.current_time == "second":
+            self.label_second.get_style_context().add_class("time-selected")
+            self.label_minute.get_style_context().remove_class("time-selected")
+
+    def on_key_press(self, widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            if self.is_fullscreen_mode:
+                self.unfullscreen()
+                self.is_fullscreen_mode = False
+            else:
+                self.close()
+        elif event.keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+
+    def toggle_fullscreen(self):
+        if self.is_fullscreen_mode:
+            self.unfullscreen()
+            self.is_fullscreen_mode = False
+        else:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+
+    # Methoden für Timer-Kontrollen
+    def on_start_button_click(self, button):
+        if not self.is_running:
+            self.start_timer()
+
+    def start_timer(self):
+        """
+        Startet oder setzt den Timer fort.
+        - Wenn der Timer gestoppt wurde (self.timer_stopped == True),
+          werden die Werte aus den Eingabefeldern als neue Startwerte übernommen.
+        - Beim Resume nach einer Pause (self.timer_stopped == False) bleiben die bisherigen Startwerte erhalten.
+        """
+        if self.timer_stopped:
+            # Nur wenn der Timer gestoppt wurde, neue Startwerte übernehmen.
+            minute = self.label_minute.get_text()
+            second = self.label_second.get_text()
+            TimerData.minute = minute
+            TimerData.second = second
+            TimerData.start_minute = minute
+            TimerData.start_second = second
+        # Beim Resume (Pause) werden die Startwerte nicht aktualisiert.
+        self.is_running = True
+        TimerData.is_running = True
+        TimerData.is_paused = False
+
+        # Sobald der Timer gestartet bzw. fortgesetzt wird, ist er nicht länger als "gestoppt" markiert.
+        self.timer_stopped = False
+
+        self.disable_input_fields()
+        self.remove_timer_focus()  # Fokus von den Timer-Feldern entfernen
+        self.button_start.set_sensitive(False)
+        self.button_pause.set_sensitive(True)
+        self.button_stop.set_sensitive(True)
+
+        # Starte den Timer-Countdown (wird jede Sekunde update_timer aufrufen)
+        self.timer_id = GLib.timeout_add_seconds(1, self.update_timer)
+
+    def pause_timer(self):
+        """
+        Pausiert den Timer.
+        Dabei werden die aktuellen Werte beibehalten und es erfolgt ein Update an den Server.
+        Das Flag self.timer_stopped bleibt False, damit beim Resume die alten Startwerte erhalten bleiben.
+        """
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+
+        self.is_running = False
+        self.is_paused = True
+        TimerData.is_running = False
+        TimerData.is_paused = True
+
+        # Hier werden die Eingabefelder nicht wieder freigegeben,
+        # da beim Resume die Zeit fortgesetzt werden soll.
+        self.button_start.set_sensitive(True)  # Ermöglicht das Resume
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(True)
+
+        # Sende ein Update an den Server, dass der Timer pausiert wurde.
+        asyncio.run_coroutine_threadsafe(
+            self.send_pause_update(TimerData.minute, TimerData.second, TimerData.is_running),
+            self.parent.poker_interface.loop
+        )
+
+    def stop_timer(self):
+        """
+        Stoppt den Timer vollständig.
+        Die Anzeige wird auf die zuletzt gespeicherten Startwerte zurückgesetzt und
+        die Eingabefelder werden wieder freigegeben.
+        Anschließend wird self.timer_stopped auf True gesetzt.
+        """
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+
+        self.is_running = False
+        self.is_paused = False
+        TimerData.is_running = False
+        TimerData.is_paused = False
+
+        # Setze die Anzeige auf die ursprünglichen Startwerte zurück
+        self.label_minute.set_text(f"{int(TimerData.start_minute):02}")
+        self.label_second.set_text(f"{int(TimerData.start_second):02}")
+        TimerData.minute = TimerData.start_minute
+        TimerData.second = TimerData.start_second
+
+        # Reaktiviere die Eingabefelder, sodass eine neue Zeit eingestellt werden kann.
+        self.enable_input_fields()
+        self.button_start.set_sensitive(True)
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(False)
+
+        # Markiere, dass der Timer jetzt vollständig gestoppt wurde.
+        self.timer_stopped = True
+
+        # Sende ein finales Update an den Server, damit alle Clients den gestoppten Status erhalten.
+        asyncio.run_coroutine_threadsafe(
+            self.send_final_timer_update(TimerData.minute, TimerData.second, TimerData.is_running),
+            self.parent.poker_interface.loop
+        )
+
+    async def send_pause_update(self, minute, second, is_running):
+        """
+        Baut eine WebSocket-Verbindung zum Server auf und sendet den Timerstatus.
+        So erhalten alle Clients das finale Update, dass der Timer pausiert ist.
+        """
+        # Serveradresse aus dem übergeordneten Interface abrufen
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_timer",
+            "minute": minute,
+            "second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Pause update sent.")
+        except Exception as e:
+            print(f"Error sending pause update: {e}")
+
+    async def send_final_timer_update(self, minute, second, is_running):
+        """
+        Baut eine WebSocket-Verbindung zum Server auf und sendet den finalen Timerstatus.
+        Dieser Update teilt allen Clients mit, dass der Timer gestoppt wurde.
+        """
+        # Hole die Serveradresse aus dem übergeordneten Interface
+        server_ip, server_port = self.parent.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_timer",
+            "minute": minute,
+            "second": second,
+            "is_running": is_running
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Final timer update sent.")
+        except Exception as e:
+            print(f"Error sending final timer update: {e}")
+
+    def on_pause_button_click(self, button):
+        """Pausiert den Timer und aktualisiert alle Bildschirme."""
+        self.pause_timer()  # Ruft die Methode auf, um den Timer im aktuellen Fenster zu pausieren
+
+        # Falls das Admin-Window oder Poker-Interface existiert, Timer-Status synchronisieren
+        if self.parent:
+            self.parent.update_all_timer_displays()
+
+    def on_stop_button_click(self, button):
+        self.stop_timer()
+
+    def update_timer(self):
+        minute = int(self.label_minute.get_text())
+        second = int(self.label_second.get_text())
+
+        if second == 0:
+            if minute == 0:
+                self.timer_finished()
+                return False
+            else:
+                minute -= 1
+                second = 59
+        else:
+            second -= 1
+
+        # Aktualisiere die Labels
+        self.label_minute.set_text(f"{minute:02}")
+        self.label_second.set_text(f"{second:02}")
+
+        # Aktualisiere TimerData
+        TimerData.minute = minute
+        TimerData.second = second
+
+        return True
+
+    def timer_finished(self):
+        self.is_running = False
+        self.is_paused = False
+        TimerData.is_running = False
+        TimerData.is_paused = False
+        self.button_start.set_label("Start")
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(False)
+        self.enable_input_fields()
+        self.reset_timer_labels()
+
+
+    def disable_input_fields(self):
+        """Deaktiviert die Eingabefelder und entfernt deren Fokus."""
+        self.button_minute.set_sensitive(False)
+        self.button_second.set_sensitive(False)
+        self.button_minute.set_can_focus(False)
+        self.button_second.set_can_focus(False)
+
+    def enable_input_fields(self):
+        """Aktiviert die Eingabefelder und erlaubt den Fokus."""
+        self.button_minute.set_sensitive(True)
+        self.button_second.set_sensitive(True)
+        self.button_minute.set_can_focus(True)
+        self.button_second.set_can_focus(True)
+
+    def reset_timer_labels(self):
+        # Reset to the initial time stored in TimerData
+        minute = TimerData.minute if TimerData.minute is not None else "00"
+        second = TimerData.second if TimerData.second is not None else "00"
+        self.label_minute.set_text(f"{int(minute):02}")
+        self.label_second.set_text(f"{int(second):02}")
+
+    def remove_timer_focus(self):
+        """Entfernt den Fokus von den Timer-Eingabefeldern, indem der Fokus auf den Fixed-Container übergeben wird."""
+        self.fixed.grab_focus()
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/utils/zeroconf_utils.py
+* Größe: 729 Bytes
+* Letzte Änderung: 2025-02-12 20:43:30
+
+```python
+# utils/zeroconf_utils.py
+
+import socket
+from zeroconf import Zeroconf, ServiceBrowser
+
+class MyListener:
+    """Listener für Zeroconf, um den Poker-Server zu entdecken."""
+    def __init__(self):
+        self.server_address = None
+
+    def remove_service(self, zeroconf, type, name):
+        # Keine Aktion erforderlich, wenn ein Service entfernt wird
+        pass
+
+    def add_service(self, zeroconf, type, name):
+        """Wird aufgerufen, wenn ein Dienst gefunden wird."""
+        info = zeroconf.get_service_info(type, name)
+        if info:
+            addr = socket.inet_ntoa(info.addresses[0])
+            print(f"Gefundener Server: {name} unter {addr}:{info.port}")
+            self.server_address = (addr, info.port)
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/utils/resources.py
+* Größe: 309 Bytes
+* Letzte Änderung: 2025-02-08 10:56:00
+
+```python
+# utils/resources.py
+
+import os
+
+def get_base_path():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def get_image_path(filename):
+    return os.path.join(get_base_path(), 'images', filename)
+
+def get_style_path(filename):
+    return os.path.join(get_base_path(), 'styles', filename)
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/utils/persistent_ws_client.py
+* Größe: 920 Bytes
+* Letzte Änderung: 2025-02-25 18:22:21
+
+```python
+import asyncio
+import websockets
+
+class PersistentWebSocketClient:
+    def __init__(self, url):
+        self.url = url
+
+    async def connect_loop(self):
+        while True:
+            try:
+                async with websockets.connect(self.url) as ws:
+                    print(f"Persistente Verbindung hergestellt zu {self.url}")
+                    await self.handle_connection(ws)
+            except Exception as e:
+                print("Verbindung verloren, versuche erneut in 5 Sekunden...", e)
+                # Sicherstellen, dass sleep im aktuellen Event Loop läuft
+                await asyncio.sleep(5)
+
+    async def handle_connection(self, ws):
+        try:
+            async for message in ws:
+                # Bearbeite die eingehenden Nachrichten hier
+                print("Nachricht erhalten:", message)
+        except Exception as e:
+            print("Fehler beim Verarbeiten der Nachricht:", e)
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/utils/helpers.py
+* Größe: 1364 Bytes
+* Letzte Änderung: 2025-02-08 10:56:00
+
+```python
+# utils/helpers.py
+
+import gi
+import os
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf
+
+from utils.resources import get_style_path
+
+def load_css():
+    css_provider = Gtk.CssProvider()
+    css_file = get_style_path("style.css")
+    if os.path.exists(css_file):
+        css_provider.load_from_path(css_file)
+        screen = Gdk.Screen.get_default()
+        Gtk.StyleContext.add_provider_for_screen(
+            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+    else:
+        print(f"CSS-Datei nicht gefunden: {css_file}")
+
+def set_background_image(widget, image_path):
+    if os.path.exists(image_path):
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            image_path, 800, 480, False
+        )
+        background_image = Gtk.Image.new_from_pixbuf(pixbuf)
+        widget.add(background_image)
+    else:
+        print(f"Hintergrundbild nicht gefunden: {image_path}")
+
+def set_background_image_in_overlay(overlay, image_path):
+    """Setzt das Hintergrundbild im Overlay."""
+    if os.path.exists(image_path):
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            image_path, 800, 480, False
+        )
+        background_image = Gtk.Image.new_from_pixbuf(pixbuf)
+        overlay.add(background_image)
+    else:
+        print(f"Hintergrundbild nicht gefunden: {image_path}")
+
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/data/blind_data.py
+* Größe: 82 Bytes
+* Letzte Änderung: 2025-02-08 10:56:00
+
+```python
+# data/blind_data.py
+
+class BlindData:
+    small_blind = None
+    big_blind = None
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/data/game_time_data.py
+* Größe: 175 Bytes
+* Letzte Änderung: 2025-02-15 17:28:46
+
+```python
+# data/game_time_data.py
+
+class GameTimeData:
+    minute = 0
+    second = 0
+
+    # Neues Attribut is_running für den Timerstatus
+    is_running = False
+    is_paused = False
+
+```
+
+--------------------------------------------------------------------------------
+
+# Datei: /home/number3/Dokumente/1.3.6/data/timer_data.py
+* Größe: 251 Bytes
+* Letzte Änderung: 2025-02-08 10:56:00
+
+```python
+# data/timer_data.py
+
+class TimerData:
+    minute = None
+    second = None
+
+    # Startzeit hinzufügen
+    start_minute = None
+    start_second = None
+
+    # Neues Attribut is_running für den Timerstatus
+    is_running = False
+    is_paused = False
+
+```
+
+--------------------------------------------------------------------------------
+
