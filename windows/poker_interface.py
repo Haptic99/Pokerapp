@@ -1,21 +1,18 @@
-import gi
+from gi.repository import Gtk, Gdk, GdkPixbuf
+from utils.resources import get_image_path
+from data.blind_data import BlindData
+from windows.admin_window import AdminWindow
+from windows.poker_hands_window import PokerHandsWindow
+from windows.chip_value_window import ChipValueWindow  # Import des normalen ChipValueWindow
+
 import asyncio
 import websockets
 import json
 import os
 import threading
-
+import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
-from utils.helpers import load_css, set_background_image, format_timer_with_status
-from utils.resources import get_image_path
-from data.blind_data import BlindData
-from data.timer_data import TimerData
-from data.game_time_data import GameTimeData
-from windows.admin_window import AdminWindow
-from windows.poker_hands_window import PokerHandsWindow
-from windows.chip_value_window import ChipValueWindow  # Import des normalen ChipValueWindow
-from utils.websocket_utils import WebSocketClient
+
 
 class PokerInterface(Gtk.Window):
     def __init__(self, is_admin=False):
@@ -68,7 +65,6 @@ class PokerInterface(Gtk.Window):
         self.create_table_left()
         self.create_table_right()
 
-
     def create_welcome_screen(self):
         """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
         Dabei werden alle anderen Buttons deaktiviert, sodass nur die Namenseingabe möglich ist."""
@@ -77,7 +73,7 @@ class PokerInterface(Gtk.Window):
 
         # Falls bereits ein Bildschirm existiert, zerstören wir ihn
         if hasattr(self, "welcome_box") and self.welcome_box:
-                self.welcome_box.destroy()
+            self.welcome_box.destroy()
 
         self.welcome_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.welcome_box.set_halign(Gtk.Align.CENTER)
@@ -101,7 +97,6 @@ class PokerInterface(Gtk.Window):
 
         self.overlay.add_overlay(self.welcome_box)
         self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
-
 
     def on_start_button_clicked(self, button):
         """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""

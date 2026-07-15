@@ -1,10 +1,11 @@
-import gi
-import os
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
-
+from gi.repository import Gtk, Gdk, GdkPixbuf
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
+
+import os
+import gi
+gi.require_version('Gtk', '3.0')
+
 
 class ChipValueEditOverlay(Gtk.Window):
     def __init__(self, parent, chip_file, chip_value, current_chf, update_callback):
@@ -12,16 +13,16 @@ class ChipValueEditOverlay(Gtk.Window):
         self.set_default_size(800, 480)  # Vollständige Fenstergröße wie bei anderen Fenstern
         self.set_transient_for(parent)
         self.set_modal(True)
-        
+
         self.chip_file = chip_file
         self.chip_value = chip_value
         self.current_chf = current_chf
         self.update_callback = update_callback
-        
+
         # Flag für neue Eingabe
         self.new_entry = True
         self.has_decimal = False  # Flag um zu prüfen, ob bereits ein Dezimalpunkt eingegeben wurde
-        
+
         # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
 
@@ -29,21 +30,21 @@ class ChipValueEditOverlay(Gtk.Window):
         if hasattr(parent, 'is_fullscreen_mode') and parent.is_fullscreen_mode:
             self.fullscreen()
             self.is_fullscreen_mode = True
-        
+
         # Set background image (konsistent mit anderen Fenstern)
         self.overlay = Gtk.Overlay()
         self.add(self.overlay)
-        
+
         self.background_image_path = get_image_path("background_start.jpg")
         set_background_image(self.overlay, self.background_image_path)
-        
+
         # Main container
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
-        
+
         # Create UI (in separaten Methoden für bessere Strukturierung)
         self.create_ui_components()
-        
+
         # Key bindings für Escape und F11
         self.connect("key-press-event", self.on_key_press)
 
@@ -53,13 +54,13 @@ class ChipValueEditOverlay(Gtk.Window):
         title_label.set_markup("<span size='x-large' weight='bold' foreground='#CDAD00'>CHF Wert festlegen</span>")
         title_label.get_style_context().add_class("dialog-text")
         self.fixed.put(title_label, 300, 20)
-        
+
         # Chipwert links anzeigen (ähnlich wie Timer in anderen Fenstern)
         self.create_chip_info_area()
-        
+
         # Numpad rechts in der Mitte (konsistent mit anderen Fenstern)
         self.create_numpad()
-        
+
         # "Schließen" Button unten rechts (konsistent mit anderen Fenstern)
         self.create_back_button()
 
@@ -68,31 +69,31 @@ class ChipValueEditOverlay(Gtk.Window):
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         vbox.set_homogeneous(False)
         self.fixed.put(vbox, 130, 100)  # Gleiche Position wie in anderen Fenstern
-        
+
         # Chip-Bild anzeigen
         chip_path = os.path.join("Chips", self.chip_file)
         full_path = get_image_path(chip_path)
-        
+
         if os.path.exists(full_path):
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 120, 120, True)
             chip_image = Gtk.Image.new_from_pixbuf(pixbuf)
             vbox.pack_start(chip_image, False, False, 5)
-        
+
         # Chip-Wert (in Chips) anzeigen
         value_label = Gtk.Label(label=f"Chipwert: {self.chip_value}")
         value_label.get_style_context().add_class("green-text")
         vbox.pack_start(value_label, False, False, 5)
-        
+
         # CHF Wert Titel
         label_chf_title = Gtk.Label(label="CHF Wert")
         label_chf_title.get_style_context().add_class("time-title")  # Konsistentes Styling
         vbox.pack_start(label_chf_title, False, False, 5)
-        
+
         # CHF Wert Eingabefeld (ähnlich wie Timer-Eingabe)
         chf_display = "0.00" if self.current_chf == 0.0 else f"{self.current_chf:.2f}"
         self.chf_entry_label = Gtk.Label(label=chf_display)
         self.chf_entry_label.get_style_context().add_class("time-value")  # Konsistentes Styling
-        
+
         # Button um das Label, um Klicks zu erfassen
         self.chf_entry = Gtk.Button()
         self.chf_entry.add(self.chf_entry_label)
@@ -106,7 +107,7 @@ class ChipValueEditOverlay(Gtk.Window):
         grid.set_row_spacing(10)
         grid.set_column_spacing(10)
         self.fixed.put(grid, 400, 100)  # Position wie in anderen Fenstern
-        
+
         # Numpad buttons
         buttons = [
             ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
@@ -115,7 +116,7 @@ class ChipValueEditOverlay(Gtk.Window):
             ('C', 0, 3), ('0', 1, 3), ('←', 2, 3),
             ('.', 0, 4), ('Ok', 1, 4, 2)  # OK-Button über 2 Spalten
         ]
-        
+
         for item in buttons:
             label = item[0]
             x = item[1]
@@ -123,11 +124,11 @@ class ChipValueEditOverlay(Gtk.Window):
             width = 1
             if len(item) > 3:
                 width = item[3]
-                
+
             button = Gtk.Button(label=label)
             button.get_style_context().add_class("numpad-button")
             button.set_size_request(70 * width + (width-1) * 10, 60)  # Größe anpassen
-            
+
             if label == 'C':
                 button.connect("clicked", self.on_clear_clicked)
             elif label == '←':
@@ -139,7 +140,7 @@ class ChipValueEditOverlay(Gtk.Window):
                 button.get_style_context().add_class("numpad-button-ok")
             else:
                 button.connect("clicked", self.on_number_clicked)
-                
+
             grid.attach(button, x, y, width, 1)
 
     def create_back_button(self):
@@ -158,7 +159,7 @@ class ChipValueEditOverlay(Gtk.Window):
     def on_number_clicked(self, button):
         digit = button.get_label()
         current_text = self.chf_entry_label.get_text()
-        
+
         if self.new_entry:
             # Bei neuer Eingabe, überschreibe Text
             if digit == '0':
@@ -171,16 +172,16 @@ class ChipValueEditOverlay(Gtk.Window):
         else:
             # Bei bestehender Eingabe, füge Ziffer hinzu
             new_text = current_text + digit
-            
+
         # Update label
         self.chf_entry_label.set_text(new_text)
 
     def on_decimal_clicked(self, button):
         if self.has_decimal:
             return  # Dezimalpunkt existiert bereits
-            
+
         current_text = self.chf_entry_label.get_text()
-        
+
         if self.new_entry:
             # Beginne neue Eingabe mit Dezimalpunkt
             new_text = "0."
@@ -188,7 +189,7 @@ class ChipValueEditOverlay(Gtk.Window):
         else:
             # Füge Dezimalpunkt an bestehende Eingabe
             new_text = current_text + "."
-            
+
         self.has_decimal = True
         self.chf_entry_label.set_text(new_text)
 
@@ -199,7 +200,7 @@ class ChipValueEditOverlay(Gtk.Window):
 
     def on_backspace_clicked(self, button):
         current_text = self.chf_entry_label.get_text()
-        
+
         if len(current_text) <= 1:
             # Wenn nur eine Ziffer übrig, setze auf 0
             self.chf_entry_label.set_text("0.00")
@@ -222,7 +223,7 @@ class ChipValueEditOverlay(Gtk.Window):
             if new_chf_value < 0:
                 self.show_error_dialog("Ungültiger Wert", "CHF-Wert muss größer oder gleich 0 sein.")
                 return
-                
+
             # Rufe Callback mit neuem Wert auf
             self.update_callback(self.chip_file, new_chf_value)
             self.close()

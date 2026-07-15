@@ -2,7 +2,7 @@
 
 class ChipData:
     """Stores values for poker chips and their equivalent in CHF."""
-    
+
     # Chips and their values (in chips)
     CHIPS = {
         "chip_25.png": 25,
@@ -13,7 +13,7 @@ class ChipData:
         "chip_5000.png": 5000,
         "chip_10000.png": 10000
     }
-    
+
     # CHF values (default ratio: 1 CHF = 100 chips)
     chf_values = {
         "chip_25.png": 0.25,
@@ -30,13 +30,13 @@ class ChipData:
     def set_chf_value(cls, chip_filename, new_chf_value):
         if chip_filename not in cls.CHIPS:
             return False
-            
+
         # Calculate ratio
         chip_value = cls.CHIPS[chip_filename]
         ratio = new_chf_value / chip_value
-        
+
         # Update all chips based on the new ratio
         for chip, value in cls.CHIPS.items():
             cls.chf_values[chip] = value * ratio
-            
+
         return True

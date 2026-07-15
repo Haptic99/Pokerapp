@@ -1,10 +1,4 @@
-import gi
-import websockets
-import json
-import asyncio
-gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
-
 from utils.helpers import set_background_image, format_timer_with_status
 from utils.resources import get_image_path
 from windows.player_position_window import PlayerPositionWindow
@@ -17,6 +11,12 @@ from utils.websocket_utils import WebSocketClient
 from utils.display_utils import update_client_display
 from windows.round_management_window import RoundManagementWindow
 from windows.chip_value_window import ChipValueWindow
+
+import websockets
+import json
+import asyncio
+import gi
+gi.require_version('Gtk', '3.0')
 
 
 class AdminWindow(Gtk.Window):
@@ -31,7 +31,7 @@ class AdminWindow(Gtk.Window):
 
         # Setze das Admin-Fenster als untergeordnetes Fenster des Poker-Interfaces
         if self.poker_interface:
-            self.set_transient_for(self.poker_interface)  
+            self.set_transient_for(self.poker_interface)
 
         # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
@@ -63,7 +63,7 @@ class AdminWindow(Gtk.Window):
 
         # WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
         self.ws_client = WebSocketClient(update_display_callback=self.update_display)
-        
+
         # Starte den Netzwerk-Listener
         self.ws_client.start_async_loop()
 
@@ -74,21 +74,21 @@ class AdminWindow(Gtk.Window):
         """Aktualisiert alle Anzeigen basierend auf den aktuellen Daten."""
         # Blinds-Tabelle aktualisieren
         self.update_blinds_table()
-        
+
         # Spielzeit-Tabelle aktualisieren
         self.update_game_time_table()
-        
+
         # Runden-Tabelle aktualisieren
         self.update_rounds_table()
-        
+
         return True  # Damit der Timer weiterläuft
 
     def update_game_time_table(self):
         game_minute = GameTimeData.minute if GameTimeData.minute is not None else "-"
         game_second = GameTimeData.second if GameTimeData.second is not None else "-"
-        
+
         game_time_str = format_timer_with_status(game_minute, game_second, GameTimeData.is_running)
-        
+
         if "Spielzeit" in self.game_time_labels:
             self.game_time_labels["Spielzeit"].set_text(game_time_str)
 
@@ -96,7 +96,7 @@ class AdminWindow(Gtk.Window):
     def update_rounds_table(self):
         from data.round_data import RoundData
         rounds_count = RoundData.count if RoundData.count is not None else 0
-        
+
         if "Anzahl Runden" in self.rounds_labels:
             # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
             rounds_text = "-" if rounds_count == 0 else str(rounds_count)
@@ -111,7 +111,7 @@ class AdminWindow(Gtk.Window):
         adjust_blinds_button.connect("leave-notify-event", self.on_leave)
         adjust_blinds_button.get_style_context().add_class("button-custom")
         self.fixed.put(adjust_blinds_button, 30, 20)
-        
+
         # "Blinds Zeiten" Button
         blinds_times_button = Gtk.Button(label="Blinds Zeiten")
         blinds_times_button.set_size_request(165, 40)
@@ -143,7 +143,7 @@ class AdminWindow(Gtk.Window):
         player_position_button.connect("leave-notify-event", self.on_leave)
         player_position_button.get_style_context().add_class("button-custom")
         self.fixed.put(player_position_button, 605, 20)
-        
+
         # NEU: "Chipwerte anpassen" Button
         chip_value_admin_button = Gtk.Button(label="Chipwerte anpassen")
         chip_value_admin_button.set_size_request(165, 40)
@@ -158,20 +158,20 @@ class AdminWindow(Gtk.Window):
 
         # Tabelle für Timer erstellen
         self.create_timer_table()
-        
+
         # Tabelle für Spielzeit erstellen
         self.create_game_time_table()
-        
+
         # NEUE TABELLE: Tabelle für Runden erstellen
         self.create_rounds_table()
-        
+
         # "Zurück" Button unten rechts hinzufügen
         back_button = Gtk.Button(label="Schliessen")
         back_button.set_size_request(100, 40)
         back_button.connect("clicked", self.on_back_button_click)
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
-        
+
     # NEUE METHODE: Chip Value Admin-Fenster öffnen
     def open_chip_value_admin_window(self, widget):
         """Öffnet das Chipwerte-Admin-Fenster."""
@@ -191,7 +191,7 @@ class AdminWindow(Gtk.Window):
 
         # Hole die aktuelle Rundenzahl
         rounds_count = RoundData.count if RoundData.count is not None else 0
-        
+
         # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
         rounds_text = "-" if rounds_count == 0 else str(rounds_count)
 
@@ -213,7 +213,7 @@ class AdminWindow(Gtk.Window):
             label_value.set_margin_right(6)
             label_title.get_style_context().add_class("green-text")
             label_value.get_style_context().add_class("green-text")
-            
+
             # Speichere die Labels, damit sie später aktualisiert werden können
             self.rounds_labels[title] = label_value
 
@@ -243,7 +243,7 @@ class AdminWindow(Gtk.Window):
         if hasattr(self.poker_interface, "info_labels") and "Anzahl Runden" in self.poker_interface.info_labels:
             self.poker_interface.info_labels["Anzahl Runden"].set_text(str(rounds_count))
 
-    def open_total_game_time_window(self, widget, _):
+    def open_total_game_time_window(self, widget):
         # Öffnet das Gesamtspielzeit-Fenster mit einem Dummy-Callback
         total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(
             self, confirm_callback=lambda *args: None
@@ -328,7 +328,7 @@ class AdminWindow(Gtk.Window):
             label_time.set_margin_right(6)
             label_title.get_style_context().add_class("green-text")
             label_time.get_style_context().add_class("green-text")
-            
+
             # Speichere das Zeit-Label, damit es später aktualisiert werden kann
             self.game_time_labels[title] = label_time
 
@@ -346,7 +346,6 @@ class AdminWindow(Gtk.Window):
         # Positioniere die Tabelle – hier als Beispiel bei (180, 224)
         self.fixed.put(self.game_time_table, 180, 224)
 
-
     def create_timer_table(self):
         # (Rest der Methode wie im Original)
         self.timer_table = Gtk.Grid()
@@ -354,7 +353,6 @@ class AdminWindow(Gtk.Window):
         self.timer_table.set_column_spacing(10)
         self.timer_table.set_margin_top(10)
         self.timer_table.set_margin_left(40)
-
 
         # Daten: Erste Zeile: eingestellte Zeit, Zweite Zeile: momentane Zeit
         data = [
@@ -375,7 +373,7 @@ class AdminWindow(Gtk.Window):
             label_time.set_margin_right(6)
             label_title.get_style_context().add_class("green-text")
             label_time.get_style_context().add_class("green-text")
-            
+
             # Speichere die Zeit-Labels in einem Dictionary, um sie später updaten zu können
             self.timer_labels[title] = label_time
 
@@ -392,8 +390,6 @@ class AdminWindow(Gtk.Window):
 
         self.fixed.put(self.timer_table, 180, 110)
 
-
-
     def open_player_position_window(self, widget):
         # (Rest der Methode wie im Original)
         """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten vom Server."""
@@ -405,7 +401,6 @@ class AdminWindow(Gtk.Window):
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
         self.update_player_window()
-
 
     def on_player_window_closed(self, widget):
         # (Rest der Methode wie im Original)
@@ -428,18 +423,15 @@ class AdminWindow(Gtk.Window):
 
         asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
 
-
     def open_blind_adjustment_window(self, widget):
         # (Rest der Methode wie im Original)
         blind_window = BlindAdjustmentWindow(self, self.on_blind_values_confirmed)
         blind_window.show_all()
 
-
     def open_timer_setting_window(self, widget):
         # (Rest der Methode wie im Original)
         timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
         timer_window.show_all()
-
 
     def update_player_window(self):
         # (Rest der Methode wie im Original)
@@ -480,7 +472,7 @@ class AdminWindow(Gtk.Window):
              self.send_update_blinds(small_blind, big_blind),
              self.poker_interface.loop
         )
-    
+
     def on_timer_values_confirmed(self, minute, second):
         # (Rest der Methode wie im Original)
         TimerData.minute = minute
@@ -504,12 +496,11 @@ class AdminWindow(Gtk.Window):
              "big_blind": big_blind
         }
         try:
-             async with websockets.connect(uri) as websocket:
-                 await websocket.send(json.dumps(message))
-                 print("Blind update sent.")
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                print("Blind update sent.")
         except Exception as e:
-             print(f"Fehler beim Senden der Blinds: {e}")
-
+            print(f"Fehler beim Senden der Blinds: {e}")
 
     async def send_update_timer(self, minute, second, is_running):
         # (Rest der Methode wie im Original)
@@ -532,13 +523,12 @@ class AdminWindow(Gtk.Window):
         # Hole die aktuellen Werte – falls None, setze einen Standardwert
         small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
         big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
-        
+
         # Aktualisiere die Labels
         if "Small Blind" in self.blind_labels:
             self.blind_labels["Small Blind"].set_text(small_blind_value)
         if "Big Blind" in self.blind_labels:
             self.blind_labels["Big Blind"].set_text(big_blind_value)
-
 
     def on_back_button_click(self, widget):
         # (Rest der Methode wie im Original)

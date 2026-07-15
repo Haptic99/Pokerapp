@@ -4,12 +4,13 @@ from data.game_time_data import GameTimeData
 from data.round_data import RoundData
 from data.chip_data import ChipData
 
+
 def update_client_display(instance, data):
     # Aktualisiere die Timer-Daten anhand der vom Server gesendeten Statuswerte
     TimerData.minute = data.get("blind_time_minute", TimerData.minute)
     TimerData.second = data.get("blind_time_second", TimerData.second)
     TimerData.is_running = data.get("timer_running", TimerData.is_running)
-    
+
     # Setze konfigurierte Startzeit aus dem Server‑Status
     TimerData.start_minute = data.get("configured_blind_time_minute", TimerData.start_minute)
     TimerData.start_second = data.get("configured_blind_time_second", TimerData.start_second)
@@ -62,7 +63,7 @@ def update_client_display(instance, data):
             if hasattr(instance, "game_timer"):
                 instance.label_minute.set_text(f"{game_minute:02}")
                 instance.label_second.set_text(f"{game_second:02}")
-                
+
                 # Aktualisiere Buttons basierend auf game_running Status
                 if hasattr(instance, "button_start") and hasattr(instance, "button_pause") and hasattr(instance, "button_stop"):
                     if game_running:
@@ -120,24 +121,24 @@ def update_client_display(instance, data):
 
     if hasattr(instance, "timer_labels") and "Momentane Zeit" in instance.timer_labels:
         instance.timer_labels["Momentane Zeit"].set_text(current_time_str)
-        
+
     # --- Aktualisiere Rundenzählung ---
     if "rounds_count" in data:
         rounds_count = data.get("rounds_count", 0)
         RoundData.count = rounds_count
-        
+
         # Aktualisiere die Anzeige, falls das Label vorhanden ist
         if hasattr(instance, "info_labels") and "Anzahl Runden" in instance.info_labels:
             # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
             rounds_text = "-" if rounds_count == 0 else str(rounds_count)
             instance.info_labels["Anzahl Runden"].set_text(rounds_text)
-    
+
     # --- Aktualisiere Chipwerte, falls vorhanden ---
     if "chip_values" in data:
         chip_values = data.get("chip_values", {})
         # Aktualisiere die lokalen ChipData.chf_values
         ChipData.chf_values.update(chip_values)
-        
+
         # Falls wir uns im ChipValueWindow befinden, aktualisiere die Labels
         if hasattr(instance, "chf_labels") and isinstance(instance.chf_labels, dict):
             for chip_file, label in instance.chf_labels.items():

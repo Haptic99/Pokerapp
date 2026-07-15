@@ -1,10 +1,10 @@
-import gi
-
-gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
+import gi
+gi.require_version('Gtk', '3.0')
+
 
 class PokerClient(PokerInterface):
     """Der Poker-Client."""
@@ -17,10 +17,10 @@ class PokerClient(PokerInterface):
 
         # WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
         self.ws_client = WebSocketClient(update_display_callback=self.update_display)
-        
+
         # Starte den Netzwerk-Listener
         self.ws_client.start_async_loop()
-        
+
         # Für Kompatibilität mit bestehendem Code
         self.server_address = self.ws_client.server_address
         self.loop = self.ws_client.loop
@@ -28,6 +28,7 @@ class PokerClient(PokerInterface):
 
     def update_display(self, data):
         update_client_display(self, data)
+
 
 # Statt eines asynchronen main()-Loops wird hier einfach der Client instanziert
 if __name__ == '__main__':

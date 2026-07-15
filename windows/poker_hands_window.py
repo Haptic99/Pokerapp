@@ -1,11 +1,13 @@
 # windows/poker_hands_window.py
 
-import gi
-import os
-gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GdkPixbuf
 from utils.helpers import set_background_image_in_overlay
 from utils.resources import get_image_path
+
+import os
+import gi
+gi.require_version('Gtk', '3.0')
+
 
 class PokerHandsWindow(Gtk.Window):
     def __init__(self, parent):
@@ -44,8 +46,7 @@ class PokerHandsWindow(Gtk.Window):
         fixed = Gtk.Fixed()
         overlay.add_overlay(fixed)
         fixed.put(close_button, 658, 416)
-        
-    
+
     def on_key_press(self, widget, event):
         """Keybindings für Escape und F11 im Poker Hands Fenster."""
         if event.keyval == Gtk.KEY_Escape:

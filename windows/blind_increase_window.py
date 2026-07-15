@@ -1,13 +1,15 @@
-import gi
-gi.require_version('Gtk', '3.0')
-import asyncio
-import websockets
-import json
-from gi.repository import Gtk, Gdk, GdkPixbuf
+from gi.repository import Gtk, Gdk
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
 from data.blind_data import BlindData
 from data.timer_data import TimerData
+
+import asyncio
+import websockets
+import json
+import gi
+gi.require_version('Gtk', '3.0')
+
 
 class BlindIncreaseWindow(Gtk.Window):
     def __init__(self, parent, confirm_callback=None):
@@ -60,14 +62,14 @@ class BlindIncreaseWindow(Gtk.Window):
         frame = Gtk.Frame()
         frame.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
         frame.get_style_context().add_class("blind-increase-frame")
-        
+
         # Hauptdialog-Box (Container für alles)
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
         main_box.set_margin_top(20)
         main_box.set_margin_bottom(20)
         main_box.set_margin_start(30)
         main_box.set_margin_end(30)
-        
+
         # Titel mit größerer Schrift
         title_label = Gtk.Label()
         title_label.set_markup("<span size='x-large' weight='bold' foreground='#CDAD00'>Nächste Blinderhöhung</span>")
@@ -87,7 +89,7 @@ class BlindIncreaseWindow(Gtk.Window):
         current_blinds_label = Gtk.Label()
         current_blinds_label.set_markup("<span foreground='#9FB6CD'>Aktuelle Blinds:</span>")
         current_blinds_label.set_halign(Gtk.Align.START)
-        
+
         new_blinds_label = Gtk.Label()
         new_blinds_label.set_markup("<span foreground='#9FB6CD'>Neue Blinds:</span>")
         new_blinds_label.set_halign(Gtk.Align.START)
@@ -96,7 +98,7 @@ class BlindIncreaseWindow(Gtk.Window):
         current_value_label = Gtk.Label()
         current_value_label.set_markup(f"<span foreground='#9FB6CD'>{current_small_blind}/{current_big_blind}</span>")
         current_value_label.set_halign(Gtk.Align.END)
-        
+
         # Neue Blinds - hervorgehoben
         new_value_label = Gtk.Label()
         new_value_label.set_markup(f"<span foreground='#FFFF00' weight='bold'>{new_small_blind}/{new_big_blind}</span>")
@@ -133,7 +135,7 @@ class BlindIncreaseWindow(Gtk.Window):
 
         button_box.pack_start(self.yes_button, False, False, 0)
         button_box.pack_start(self.no_button, False, False, 0)
-        
+
         main_box.pack_start(button_box, False, False, 0)
 
         # Den Frame um die Hauptbox legen und alles dem Fixed-Container hinzufügen
@@ -186,7 +188,7 @@ class BlindIncreaseWindow(Gtk.Window):
         """Sendet die Updates an den Server."""
         # Suche nach dem event loop
         loop = None
-        
+
         # Verschiedene Möglichkeiten durchgehen, wo der loop sein könnte
         if hasattr(self.parent, 'poker_interface') and hasattr(self.parent.poker_interface, 'loop'):
             # Fall 1: Direkter Zugriff auf poker_interface (AdminWindow)
@@ -200,17 +202,17 @@ class BlindIncreaseWindow(Gtk.Window):
         else:
             print("ERROR: Konnte keinen asyncio loop finden!")
             return
-        
+
         # Timer-Update senden
         asyncio.run_coroutine_threadsafe(
             self.send_update_timer(
-                TimerData.start_minute, 
-                TimerData.start_second, 
+                TimerData.start_minute,
+                TimerData.start_second,
                 start_timer
             ),
             loop
         )
-        
+
         # Blinds-Update senden (nur wenn die Blinds erhöht werden sollen)
         if small_blind is not None and big_blind is not None:
             asyncio.run_coroutine_threadsafe(
@@ -226,14 +228,14 @@ class BlindIncreaseWindow(Gtk.Window):
             server_address = self.parent.poker_interface.server_address
         elif hasattr(self.parent, 'ws_client') and hasattr(self.parent.ws_client, 'server_address'):
             server_address = self.parent.ws_client.server_address
-        
+
         if not server_address:
             print("ERROR: Konnte keine Server-Adresse finden!")
             return
-        
+
         server_ip, server_port = server_address
         uri = f"ws://{server_ip}:{server_port}"
-        
+
         try:
             async with websockets.connect(uri) as websocket:
                 message = {
@@ -255,14 +257,14 @@ class BlindIncreaseWindow(Gtk.Window):
             server_address = self.parent.poker_interface.server_address
         elif hasattr(self.parent, 'ws_client') and hasattr(self.parent.ws_client, 'server_address'):
             server_address = self.parent.ws_client.server_address
-        
+
         if not server_address:
             print("ERROR: Konnte keine Server-Adresse finden!")
             return
-        
+
         server_ip, server_port = server_address
         uri = f"ws://{server_ip}:{server_port}"
-        
+
         try:
             async with websockets.connect(uri) as websocket:
                 message = {

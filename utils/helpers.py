@@ -1,11 +1,9 @@
-# utils/helpers.py
-
-import gi
-import os
-gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf
-
 from utils.resources import get_style_path
+import os
+import gi
+gi.require_version('Gtk', '3.0')
+
 
 def load_css():
     css_provider = Gtk.CssProvider()
@@ -19,6 +17,7 @@ def load_css():
     else:
         print(f"CSS-Datei nicht gefunden: {css_file}")
 
+
 def set_background_image(widget, image_path):
     if os.path.exists(image_path):
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
@@ -28,6 +27,7 @@ def set_background_image(widget, image_path):
         widget.add(background_image)
     else:
         print(f"Hintergrundbild nicht gefunden: {image_path}")
+
 
 def set_background_image_in_overlay(overlay, image_path):
     """Setzt das Hintergrundbild im Overlay."""
@@ -39,6 +39,7 @@ def set_background_image_in_overlay(overlay, image_path):
         overlay.add(background_image)
     else:
         print(f"Hintergrundbild nicht gefunden: {image_path}")
+
 
 def format_timer_with_status(minute, second, is_running):
     """Formatiert Timer-Werte mit Statussymbol (‖ für Pause) oder gibt '-' zurück, wenn beide Werte 0 sind."""

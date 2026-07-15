@@ -8,7 +8,7 @@ from data.timer_data import TimerData  # Timer-Daten
 from data.blind_data import BlindData  # Blind-Daten
 from data.game_time_data import GameTimeData  # Spielzeit-Daten
 from data.round_data import RoundData
-from data.chip_data import ChipData 
+from data.chip_data import ChipData
 
 # Lokale IP-Adresse ermitteln
 hostname = socket.gethostname()
@@ -36,19 +36,14 @@ zeroconf.register_service(info)
 clients = set()           # Verbundene Clients
 connected_players = []    # Liste der Spielernamen (Reihenfolge des Logins)
 
+
 async def update_loop():
     while True:
-        # Debug timer status - Handle None values with default of 0
-        minute = "-" if TimerData.minute is None else TimerData.minute
-        second = "-" if TimerData.second is None else TimerData.second
-        current_minute = "-" if TimerData.start_minute is None else TimerData.start_minute
-        current_second = "-" if TimerData.start_second is None else TimerData.start_second
-
         # If the blind timer is running, update it (countdown)
         if TimerData.is_running:
             if TimerData.minute == 0 and TimerData.second == 0:
                 TimerData.is_running = False
-                print(f"[DEBUG] Timer reached zero, stopping")
+                print("[DEBUG] Timer reached zero, stopping")
             else:
                 if TimerData.second > 0:
                     TimerData.second -= 1
@@ -66,6 +61,7 @@ async def update_loop():
         # Send aggregated status to all clients
         await broadcast_status()
         await asyncio.sleep(1)
+
 
 async def handle_client(websocket):
     """
@@ -160,6 +156,7 @@ async def handle_client(websocket):
     finally:
         clients.remove(websocket)
 
+
 async def send_status(websocket):
     """
     Sendet an einen einzelnen Client den aggregierten Status.
@@ -180,15 +177,16 @@ async def send_status(websocket):
     }
     await websocket.send(json.dumps(status))
 
+
 async def broadcast_status():
     """
     Sendet den aggregierten Status an alle verbundenen Clients.
     Hier werden alle Datenfelder zusammengeführt.
     """
-    
+
     if not clients:
         return
-    
+
     status = {
         "small_blind": BlindData.small_blind,
         "big_blind": BlindData.big_blind,
@@ -204,11 +202,11 @@ async def broadcast_status():
         "rounds_count": RoundData.count,
         "chip_values": ChipData.chf_values,
     }
-    
+
     # Eine Kopie des clients-Sets erstellen, um sicher über die ursprünglichen Clients zu iterieren
     clients_copy = clients.copy()
     to_remove = set()
-    
+
     for client in clients_copy:
         try:
             await client.send(json.dumps(status))
@@ -219,6 +217,7 @@ async def broadcast_status():
     for client in to_remove:
         if client in clients:  # Sicherheitscheck, falls der Client bereits entfernt wurde
             clients.remove(client)
+
 
 async def main():
     try:

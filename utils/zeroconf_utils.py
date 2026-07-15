@@ -1,7 +1,7 @@
 # utils/zeroconf_utils.py
 
 import socket
-from zeroconf import Zeroconf, ServiceBrowser
+
 
 class MyListener:
     """Listener für Zeroconf, um den Poker-Server zu entdecken."""
