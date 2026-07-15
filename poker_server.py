@@ -60,7 +60,6 @@ async def update_loop():
             if GameTimeData.second >= 60:
                 GameTimeData.second = 0
                 GameTimeData.minute += 1
-            print(f"[DEBUG] Game time updated: {GameTimeData.minute:02}:{GameTimeData.second:02}")
 
         # Send aggregated status to all clients
         await broadcast_status()

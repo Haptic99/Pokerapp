@@ -260,20 +260,6 @@ class TotalGameTimeWindow(Gtk.Window):
         # Zuerst den Spielzeit-Timer mit dem Controller stoppen
         self.game_timer.stop_timer()
 
-        # Zusätzlich: Stoppe auch den Blinds-Timer (TimerData)
-        TimerData.is_running = False
-        TimerData.is_paused = False
-        # Optional: Setze TimerData auf die ursprünglichen Startwerte zurück
-        TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
-        TimerData.second = TimerData.start_second if TimerData.start_second is not None else "-"
-
-        # Falls das Admin-Window bereits existiert, sende auch für TimerData:
-        if hasattr(self.parent, 'send_update_timer'):
-            asyncio.run_coroutine_threadsafe(
-                self.parent.send_update_timer(TimerData.minute, TimerData.second, TimerData.is_running),
-                self.parent.poker_interface.loop
-            )
-
         # NEUE FUNKTIONALITÄT: Aktiviere alle NumPad-Buttons wieder
         for btn in self.numpad_buttons:
             btn.set_sensitive(True)
