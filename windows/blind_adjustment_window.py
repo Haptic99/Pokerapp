@@ -1,8 +1,6 @@
 # windows/blind_adjustment_window.py
 
 import gi
-import websockets
-import json
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 

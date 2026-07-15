@@ -1,132 +1,64 @@
-import asyncio
-import websockets
-import json
-import socket
-import threading
 import gi
-from zeroconf import Zeroconf, ServiceBrowser
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
-from utils.zeroconf_utils import MyListener
-from utils.persistent_ws_client import PersistentWebSocketClient
+from utils.display_utils import update_client_display
+from utils.websocket_utils import WebSocketClient
 
 class PokerAdminClient(PokerInterface):
     """Der Poker‑Admin‑Client."""
     def __init__(self):
         super().__init__(is_admin=True)  # Admin‑Client hat Admin‑Privilegien
 
-        # Zeroconf‑Diensterkennung starten
-        self.server_address = self.find_server_via_zeroconf()
+        # WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
+        self.ws_client = WebSocketClient(update_display_callback=self.update_display)
+        
+        # Starte den Netzwerk-Listener
+        self.ws_client.start_async_loop()
+        
+        # Für Kompatibilität mit bestehendem Code
+        self.server_address = self.ws_client.server_address
+        self.loop = self.ws_client.loop
+        self.uri = self.ws_client.uri
 
-        # Starte den Netzwerk‑Listener in einem eigenen Thread
-        self.start_async_loop()
+    def update_timer_table(self):
+        from data.timer_data import TimerData
+        
+        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+        set_second = TimerData.start_second if TimerData.start_second is not None else 0
 
-        self.uri = (
-            f"ws://{self.server_address[0]}:{self.server_address[1]}"
-            if self.server_address
-            else "ws://192.168.1.65:8765"
-        )
-        # Initialisiere den persistenten WebSocket‑Client ohne zusätzlichen Loop‑Parameter
-        self.persistent_ws = PersistentWebSocketClient(self.uri)
+        current_minute = TimerData.minute if TimerData.minute is not None else 0
+        current_second = TimerData.second if TimerData.second is not None else 0
+        
+        status_text = "" if TimerData.is_running else "‖"
+        
+        set_time_str = f"{set_minute:02}:{set_second:02}"
+        current_time_str = f"{status_text} {current_minute:02}:{current_second:02}"
 
-    def find_server_via_zeroconf(self):
-        """Verwendet Zeroconf, um den Poker‑Server zu finden."""
-        zeroconf = Zeroconf()
-        listener = MyListener()
-        ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
-
-        print("🔍 Suche nach dem Server...")
-        import time
-        time.sleep(5)  # Warte einige Sekunden, um Dienste zu entdecken
-        zeroconf.close()
-
-        if listener.server_address:
-            print(f"✅ Server gefunden unter {listener.server_address}")
-            return listener.server_address
-        else:
-            print("❌ Kein Server gefunden. Verwende eine Standard-Adresse.")
-            return None  # Hier kann ein Fallback verwendet werden
-
-    def start_async_loop(self):
-        """Startet den asyncio‑Eventloop in einem separaten Thread."""
-        self.loop = asyncio.new_event_loop()
-        threading.Thread(target=self.run_async_loop, daemon=True).start()
-        # Starte die Routine zum Abhören von Updates vom Server
-        asyncio.run_coroutine_threadsafe(self.listen_for_updates(), self.loop)
-
-    def run_async_loop(self):
-        """Führt den asyncio‑Eventloop aus."""
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_forever()
-
-    async def listen_for_updates(self):
-        """Empfängt regelmäßig Updates vom Server und aktualisiert das Interface."""
-        if self.server_address:
-            uri = f"ws://{self.server_address[0]}:{self.server_address[1]}"
-        else:
-            uri = "ws://192.168.1.65:8765"
-
-        while True:
-            try:
-                async with websockets.connect(uri) as websocket:
-                    print(f"Verbunden mit dem Server: {uri}")
-                    await websocket.send(json.dumps({"command": "get_status"}))
-                    async for message in websocket:
-                        data = json.loads(message)
-                        GLib.idle_add(self.update_display, data)
-            except Exception as e:
-                print(f"⚠ Verbindung zum Server fehlgeschlagen: {e}")
-                await asyncio.sleep(5)
+        if "Eingestellte Zeit" in self.timer_labels:
+            self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
+        if "Momentane Zeit" in self.timer_labels:
+            self.timer_labels["Momentane Zeit"].set_text(current_time_str)
 
     def update_display(self, data):
-        # Aktualisiere Blinds
-        small_blind = data.get("small_blind") or "n.V."
-        big_blind = data.get("big_blind") or "n.V."
-        try:
-            blind_minute = int(data.get("blind_time_minute") or 0)
-            blind_second = int(data.get("blind_time_second") or 0)
-            timer_running = data.get("timer_running", False)
-        except Exception as e:
-            print("Fehler bei der Umwandlung der Blind-Timer Werte:", e)
-            blind_minute, blind_second = 0, 0
-            timer_running = False
-
-        status_text = "" if timer_running else "‖"
-
-        if hasattr(self, "left_labels"):
-            if "Small Blind" in self.left_labels:
-                self.left_labels["Small Blind"].set_text(small_blind)
-            if "Big Blind" in self.left_labels:
-                self.left_labels["Big Blind"].set_text(big_blind)
-            if "Nächste Blinderhöhung" in self.left_labels:
-                new_text = f"{status_text} {blind_minute:02}:{blind_second:02}"
-                self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
-
-        # Aktualisiere Spielzeit
-        if "game_time_minute" in data and "game_time_second" in data:
-            try:
-                game_minute = int(data.get("game_time_minute") or 0)
-                game_second = int(data.get("game_time_second") or 0)
-                game_running = data.get("game_time_running", False)
-            except Exception as e:
-                print("Fehler bei der Umwandlung der Spielzeit:", e)
-                game_minute, game_second = 0, 0
-                game_running = False
-
-            status_game = "" if game_running else "‖"
-            if hasattr(self, "info_labels") and "Spielzeit" in self.info_labels:
-                new_game_time = f"{status_game} {game_minute:02}:{game_second:02}"
-                self.info_labels["Spielzeit"].set_text(new_game_time)
+        update_client_display(self, data)
 
     async def send_update_to_server(self, command, payload):
-        message = json.dumps({"command": command, **payload})
-        try:
-            await self.persistent_ws.send(message)
-            print(f"Update an Server gesendet: {command}, {payload}")
-        except Exception as e:
-            print(f"⚠ Fehler beim Senden eines Updates: {e}")
+        """Diese Methode ist jetzt ein Wrapper für die WebSocketClient-Methoden."""
+        if command == "update_blinds":
+            await self.ws_client.send_update_blinds(payload["small_blind"], payload["big_blind"])
+        elif command == "update_timer":
+            await self.ws_client.send_update_timer(payload["minute"], payload["second"], payload["is_running"])
+        elif command == "update_game_time":
+            await self.ws_client.send_update_game_time(
+                payload["game_time_minute"], 
+                payload["game_time_second"], 
+                payload["is_running"]
+            )
+        else:
+            message = {"command": command, **payload}
+            await self.ws_client.send_message(message)
 
 # Am Ende des Dokuments: instanziere den Admin-Client und starte die GUI
 if __name__ == '__main__':

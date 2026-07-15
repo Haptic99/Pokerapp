@@ -34,17 +34,6 @@ clients = set()           # Verbundene Clients
 connected_players = []    # Liste der Spielernamen (Reihenfolge des Logins)
 
 async def update_loop():
-    """
-    Aggregierter Update-Loop:
-      - Aktualisiert (sofern aktiv) den Timer (Countdown) einmal pro Sekunde.
-      - Sendet dann einen Status-Update, der alle relevanten Daten enthält:
-          • Small Blind, Big Blind
-          • Aktuelle Blind-Zeit (blind_time_minute, blind_time_second)
-          • Konfigurierte Blind-Zeit (configured_blind_time_minute, configured_blind_time_second)
-          • Timerstatus (timer_running)
-          • Spielzeit (game_time_minute, game_time_second) und deren Status (game_time_running)
-          • Aktuelle Spielerliste
-    """
     while True:
         # Falls der Blind-Timer läuft, aktualisiere ihn (Countdown)
         if TimerData.is_running:
@@ -56,6 +45,13 @@ async def update_loop():
                 else:
                     TimerData.minute -= 1
                     TimerData.second = 59
+
+        # Falls die Spielzeit läuft, aktualisiere sie (hochzählen)
+        if GameTimeData.is_running:
+            GameTimeData.second += 1
+            if GameTimeData.second >= 60:
+                GameTimeData.second = 0
+                GameTimeData.minute += 1
 
         # Sende den aggregierten Status an alle Clients
         await broadcast_status()
@@ -148,17 +144,17 @@ async def broadcast_status():
     """
     if clients:
         status = {
-            "SB": BlindData.small_blind,
-            "BB": BlindData.big_blind,
-            "B_Min": TimerData.minute,
-            "B_Sec": TimerData.second,
-            "Configured_B_Min": TimerData.start_minute,
-            "Configured_B_Sec": TimerData.start_second,
-            "BT_Timer?": TimerData.is_running,
-            "GT_Min": GameTimeData.minute,
-            "GT_Sec": GameTimeData.second,
-            "GT_Running?": GameTimeData.is_running,
-            "Players": connected_players
+            "small_blind": BlindData.small_blind,
+            "big_blind": BlindData.big_blind,
+            "blind_time_minute": TimerData.minute,
+            "blind_time_second": TimerData.second,
+            "configured_blind_time_minute": TimerData.start_minute,
+            "configured_blind_time_second": TimerData.start_second,
+            "timer_running": TimerData.is_running,
+            "game_time_minute": GameTimeData.minute,
+            "game_time_second": GameTimeData.second,
+            "game_time_running": GameTimeData.is_running,
+            "players": connected_players
         }
         # print("Sende aggregierten Spielstatus:", status)
         await asyncio.gather(*[client.send(json.dumps(status)) for client in clients])

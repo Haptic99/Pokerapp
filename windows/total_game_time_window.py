@@ -8,6 +8,7 @@ from gi.repository import Gtk, Gdk, GLib
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
 from data.game_time_data import GameTimeData
+from utils.timer_controller import create_game_time_timer
 
 class TotalGameTimeWindow(Gtk.Window):
     def __init__(self, parent, confirm_callback):
@@ -63,6 +64,24 @@ class TotalGameTimeWindow(Gtk.Window):
 
         # Falls bereits ein Timer-Zustand vorliegt, diesen laden
         self.load_existing_timer_state()
+
+        # TimerController initialisieren
+        self.game_timer = create_game_time_timer(
+                self, 
+                {
+                        "minute_label": self.label_minute,
+                        "second_label": self.label_second,
+                        "start_button": self.button_start,
+                        "pause_button": self.button_pause,
+                        "stop_button": self.button_stop,
+                        "fields": [self.button_minute, self.button_second]
+                }
+        )
+    
+	# Buttons mit dem Controller verbinden
+        self.button_start.connect("clicked", lambda w: self.game_timer.start_timer())
+        self.button_pause.connect("clicked", lambda w: self.game_timer.pause_timer())
+        self.button_stop.connect("clicked", lambda w: self.game_timer.stop_timer())
 
     def load_existing_timer_state(self):
         """Übernimmt den aktuellen Zustand des Timers, falls er läuft oder pausiert ist."""

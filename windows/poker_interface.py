@@ -14,7 +14,7 @@ from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
 from windows.admin_window import AdminWindow
 from windows.poker_hands_window import PokerHandsWindow
-
+from utils.websocket_utils import WebSocketClient
 
 class PokerInterface(Gtk.Window):
     def __init__(self, is_admin=False):
@@ -130,7 +130,7 @@ class PokerInterface(Gtk.Window):
         # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
         self.player_name_label.set_markup(f"<span foreground='#808080'><b>{name}</b></span>")
         # Sende den Join-Request an den Server
-        asyncio.run_coroutine_threadsafe(self.send_join_message(), self.loop)
+        asyncio.run_coroutine_threadsafe(self.ws_client.send_join_message(name), self.ws_client.loop)
         # Aktiviere alle Buttons (nun kann der Spieler interagieren)
         self.enable_buttons()
 
@@ -208,13 +208,6 @@ class PokerInterface(Gtk.Window):
         self.fixed.put(self.leave_button, 610, 416)
 
     def on_leave_button_clicked(self, button):
-        """
-        Beim Klicken des "Platz verlassen"-Buttons wird ein Bestätigungsdialog angezeigt.
-        Bei Bestätigung:
-          - Wird der Leave-Request an den Server gesendet (der aktuell gespeicherte Name wird an die Serverfunktion übergeben).
-          - Der Namensanzeige in der Tabelle wird entfernt und der Spielername gelöscht.
-          - Anschließend wird der Namenseingabe-Bildschirm erneut eingeblendet und alle Buttons deaktiviert.
-        """
         dialog = Gtk.MessageDialog(
             transient_for=self,
             flags=0,
@@ -230,7 +223,7 @@ class PokerInterface(Gtk.Window):
             # Speichere den aktuellen Namen in einer lokalen Variable
             name_to_leave = self.player_name
             # Sende den Leave-Request mit dem korrekten Namen an den Server
-            asyncio.run_coroutine_threadsafe(self.send_leave_message(name_to_leave), self.loop)
+            asyncio.run_coroutine_threadsafe(self.ws_client.send_leave_message(name_to_leave), self.ws_client.loop)
             # Entferne den Namen aus der Info-Tabelle und lösche den gespeicherten Namen
             self.player_name_label.set_text("")
             self.player_name = None
@@ -421,10 +414,10 @@ class PokerInterface(Gtk.Window):
 
     def update_timer(self):
         """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
-        if TimerData.is_running:
-            minute = int(TimerData.minute) if TimerData.minute is not None else 0
-            second = int(TimerData.second) if TimerData.second is not None else 0
-            self.left_labels["Nächste Blinderhöhung"].set_text(f"{minute:02}:{second:02}")
+        minute = int(TimerData.minute) if TimerData.minute is not None else 0
+        second = int(TimerData.second) if TimerData.second is not None else 0
+        status_text = "" if TimerData.is_running else "‖"
+        self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
         return True
 
     def update_total_game_time(self):

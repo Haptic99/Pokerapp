@@ -57,8 +57,6 @@ class AdminWindow(Gtk.Window):
         # Starte einen Timer, der die Blind-Tabelle jede Sekunde aktualisiert
         GLib.timeout_add_seconds(1, self.update_blinds_table)
 
-        # Timer für Admin-Fenster starten
-        self.start_admin_timer()
         # ★ Hier starten wir auch den Spielzeit-Timer:
         self.start_game_time_timer()
 
