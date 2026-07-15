@@ -12,6 +12,8 @@ from windows.blind_adjustment_window import BlindAdjustmentWindow
 from windows.timer_setting_window import TimerSettingWindow
 from data.blind_data import BlindData
 from data.timer_data import TimerData
+from data.game_time_data import GameTimeData
+
 
 class AdminWindow(Gtk.Window):
     def __init__(self, poker_interface):
@@ -54,6 +56,8 @@ class AdminWindow(Gtk.Window):
 
         # Timer für Admin-Fenster starten
         self.start_admin_timer()
+        # ★ Hier starten wir auch den Spielzeit-Timer:
+        self.start_game_time_timer()
 
 
     def create_ui(self):
@@ -75,6 +79,13 @@ class AdminWindow(Gtk.Window):
         blinds_times_button.get_style_context().add_class("button-custom")
         self.fixed.put(blinds_times_button, 30, 120)
 
+        # Button "Spielzeit" (statt "Gesamtspielzeit")
+        spielzeit_button = Gtk.Button(label="Spielzeit")
+        spielzeit_button.set_size_request(165, 40)
+        spielzeit_button.connect("clicked", self.open_total_game_time_window)
+        spielzeit_button.get_style_context().add_class("button-custom")
+        self.fixed.put(spielzeit_button, 30, 220)  # Position anpassen
+
         # "Spielerplatzierung" Button
         player_position_button = Gtk.Button(label="Spielerplatzierung")
         player_position_button.set_size_request(165, 40)
@@ -82,14 +93,17 @@ class AdminWindow(Gtk.Window):
         player_position_button.connect("enter-notify-event", self.on_hover)
         player_position_button.connect("leave-notify-event", self.on_leave)
         player_position_button.get_style_context().add_class("button-custom")
-        self.fixed.put(player_position_button, 30, 220)
+        self.fixed.put(player_position_button, 605, 20)
 
         # Tabelle für Blinds erstellen
         self.create_blinds_table()
 
         # Tabelle für Timer erstellen
         self.create_timer_table()
-
+        
+        # Tabelle für Spielzeit erstellen
+        self.create_game_time_table()
+        
         # "Zurück" Button unten rechts hinzufügen
         back_button = Gtk.Button(label="Schliessen")
         back_button.set_size_request(100, 40)
@@ -97,6 +111,11 @@ class AdminWindow(Gtk.Window):
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
 
+
+    def open_total_game_time_window(self, widget):
+        # Öffnet das Gesamtspielzeit-Fenster
+        total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(self)
+        total_time_window.show_all()
 
     def create_blinds_table(self):
         # (Unverändert – siehe ursprünglichen Code)
@@ -141,6 +160,57 @@ class AdminWindow(Gtk.Window):
             self.blinds_table.attach(frame2, 1, row, 1, 1)
 
         self.fixed.put(self.blinds_table, 180, 6)
+
+    def create_game_time_table(self):
+        from data.game_time_data import GameTimeData
+        self.game_time_table = Gtk.Grid()
+        self.game_time_table.set_row_spacing(5)
+        self.game_time_table.set_column_spacing(10)
+        self.game_time_table.set_margin_top(10)
+        self.game_time_table.set_margin_left(40)
+
+        # Hole die aktuelle Spielzeit
+        game_minute = GameTimeData.minute if GameTimeData.minute is not None else 0
+        game_second = GameTimeData.second if GameTimeData.second is not None else 0
+
+        # Formatierung der Spielzeit
+        game_time_str = f"{str(game_minute).zfill(2)}:{str(game_second).zfill(2)}"
+
+        # Daten: Eine Zeile – Titel "Spielzeit" und der Zeitwert
+        data = [
+            ("Spielzeit", game_time_str),
+        ]
+
+        self.game_time_labels = {}
+
+        for row, (title, time_str) in enumerate(data):
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=time_str)
+            label_title.set_size_request(150, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            
+            # Speichere das Zeit-Label, damit es später aktualisiert werden kann
+            self.game_time_labels[title] = label_time
+
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
+
+            self.game_time_table.attach(frame_title, 0, row, 1, 1)
+            self.game_time_table.attach(frame_time, 1, row, 1, 1)
+
+        # Positioniere die Tabelle – hier als Beispiel bei (180, 224)
+        self.fixed.put(self.game_time_table, 180, 224)
 
 
     def create_timer_table(self):
@@ -200,35 +270,26 @@ class AdminWindow(Gtk.Window):
 
 
 
-
     def open_player_position_window(self, widget):
-        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten."""
-        # Prüfe, ob das Fenster bereits geöffnet ist
+        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten vom Server."""
         if hasattr(self, "player_window") and self.player_window:
             self.player_window.present()
             return
 
-        # Neues Spielerplatzierungsfenster erstellen
         self.player_window = PlayerPositionWindow([])
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
-
-        # Fenster mit Daten aktualisieren
         self.update_player_window()
 
 
     def on_player_window_closed(self, widget):
-        """Behandelt das Schließen des Spielerplatzierungsfensters."""
         print("Spielerplatzierungsfenster geschlossen.")
         self.player_window = None
-
-        # Entferne den Timer, wenn er noch läuft
         if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
             GLib.source_remove(self.update_timer_id)
             print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
             self.update_timer_id = None
 
-        # Schließe die WebSocket-Verbindung
         async def close_websocket():
             if self.persistent_websocket:
                 try:
@@ -252,10 +313,7 @@ class AdminWindow(Gtk.Window):
         timer_window.show_all()
 
 
-
-
     def update_player_window(self):
-        """Aktualisiert die Spielerplatzierung mit den Live-Daten vom Server."""
         async def fetch_players():
             try:
                 server_ip, server_port = self.poker_interface.server_address
@@ -265,14 +323,11 @@ class AdminWindow(Gtk.Window):
                     self.persistent_websocket = await websockets.connect(uri)
                     print(f"WebSocket-Verbindung hergestellt: {uri}")
 
-                # Spielerliste vom Server abrufen
                 await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
                 message = await self.persistent_websocket.recv()
                 data = json.loads(message)
                 players = data.get("players", [])
                 print(f"Spieler erhalten: {players}")
-
-                # Spielerplätze im Fenster aktualisieren
                 GLib.idle_add(self.player_window.update_player_positions, players)
 
             except Exception as e:
@@ -281,25 +336,17 @@ class AdminWindow(Gtk.Window):
                     await self.persistent_websocket.close()
                     self.persistent_websocket = None
 
-        # Starte den asynchronen Abruf
         asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
-
-        # Wiederhole das Update alle 5 Sekunden, solange das Fenster offen ist
         if self.player_window:
-            self.update_timer_id = GLib.timeout_add_seconds(
-                1, lambda: self.update_player_window() or False
-            )
-        return False  # Timer nicht erneut ausführen
-
+            self.update_timer_id = GLib.timeout_add_seconds(1, lambda: self.update_player_window() or False)
+        return False
 
     def start_admin_timer(self):
         GLib.timeout_add_seconds(1, self.update_admin_timer)
 
-
     def update_admin_timer(self):
         if TimerData.is_running:
             try:
-                # Aktuelle Timer-Werte abrufen, wobei None-Werte als 0 interpretiert werden
                 current_minute = int(TimerData.minute or 0)
                 current_second = int(TimerData.second or 0)
                 set_minute = int(TimerData.start_minute or 0)
@@ -308,9 +355,7 @@ class AdminWindow(Gtk.Window):
                 print("Fehler beim Umwandeln der Timerwerte:", e)
                 current_minute, current_second, set_minute, set_second = 0, 0, 0, 0
 
-            # Countdown-Logik
             if current_minute == 0 and current_second == 0:
-                # Timer ist abgelaufen – stoppe den Timer
                 TimerData.is_running = False
             else:
                 if current_second > 0:
@@ -319,30 +364,58 @@ class AdminWindow(Gtk.Window):
                     current_minute -= 1
                     current_second = 59
 
-            # Aktualisiere die globalen TimerData-Werte
-            TimerData.minute = current_minute
-            TimerData.second = current_second
-
-            # Aktualisiere das Label für die "Eingestellte Zeit" (Startzeit bleibt unverändert)
             if hasattr(self, "timer_labels") and "Eingestellte Zeit" in self.timer_labels:
                 new_set_time = f"{set_minute:02}:{set_second:02}"
                 self.timer_labels["Eingestellte Zeit"].set_text(new_set_time)
 
-            # Aktualisiere das Label für die "Momentane Zeit" (aktuelle Countdown-Zeit)
             if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
                 new_time = f"{current_minute:02}:{current_second:02}"
                 self.timer_labels["Momentane Zeit"].set_text(new_time)
 
-            # Sende den aktualisierten Timer-Status an den Server
             asyncio.run_coroutine_threadsafe(
                 self.send_update_timer(current_minute, current_second, TimerData.is_running),
                 self.poker_interface.loop
             )
-        # Diese Methode wird jede Sekunde erneut aufgerufen
+        return True
+
+    def start_game_time_timer(self):
+        self.game_time_timer_id = GLib.timeout_add_seconds(1, self.update_game_time)
+
+    def update_game_time(self):
+        from data.game_time_data import GameTimeData
+        if GameTimeData.is_running:
+            GameTimeData.second += 1
+            if GameTimeData.second >= 60:
+                GameTimeData.second = 0
+                GameTimeData.minute += 1
+
+        # Aktualisiere den Wert in der Spielzeit-Tabelle:
+        new_game_time = f"{GameTimeData.minute:02}:{GameTimeData.second:02}"
+        # Hier wird das Label aus dem Dictionary aktualisiert:
+        self.game_time_labels["Spielzeit"].set_text(new_game_time)
+
+        # Sende das Update an den Server, etc.
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_game_time(GameTimeData.minute, GameTimeData.second),
+            self.poker_interface.loop
+        )
         return True
 
 
-
+    async def send_update_game_time(self, minute, second):
+        import websockets, json
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+            "command": "update_game_time",
+            "game_time_minute": minute,
+            "game_time_second": second
+        }
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+        except Exception as e:
+            print(f"Error sending game time update: {e}")
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
@@ -356,7 +429,6 @@ class AdminWindow(Gtk.Window):
 
     def on_timer_values_confirmed(self, minute, second):
         print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
-        # Setze die globalen Timer-Daten auf die neuen Werte:
         TimerData.minute = minute
         TimerData.second = second
         TimerData.start_minute = minute
@@ -364,7 +436,6 @@ class AdminWindow(Gtk.Window):
         TimerData.is_running = True
 
     async def send_update_blinds(self, small_blind, big_blind):
-        # Dynamisch ermittelte Server-IP und Port verwenden
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         try:
@@ -379,7 +450,6 @@ class AdminWindow(Gtk.Window):
             print(f"⚠ Fehler beim Senden der Blinds: {e}")
 
     async def send_update_timer(self, minute, second, is_running):
-        # Dynamisch ermittelte Server-IP und Port verwenden
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         try:
@@ -399,11 +469,9 @@ class AdminWindow(Gtk.Window):
         self.blind_labels["Big Blind"].set_text(big_blind)
 
     def update_timer_table(self):
-        # Hole die aktuellen Startwerte (eingestellte Zeit)
         set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
         set_second = TimerData.start_second if TimerData.start_second is not None else 0
 
-        # Hole die momentanen Timerwerte
         current_minute = TimerData.minute if TimerData.minute is not None else 0
         current_second = TimerData.second if TimerData.second is not None else 0
 
@@ -414,7 +482,6 @@ class AdminWindow(Gtk.Window):
             self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
         if "Momentane Zeit" in self.timer_labels:
             self.timer_labels["Momentane Zeit"].set_text(current_time_str)
-
 
     def on_back_button_click(self, widget):
         self.close()

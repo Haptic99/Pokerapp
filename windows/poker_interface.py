@@ -340,11 +340,9 @@ class PokerInterface(Gtk.Window):
         self.fixed.put(self.table_left, 15, 15)
 
     def create_table_right(self):
-        """Erstellt die rechte Tabelle mit der Überschrift 'Infos'
-        und einer zusätzlichen Zeile für den Spielernamen."""
         table = Gtk.Grid()
 
-        # Erste Zeile: Überschrift "Infos" über beide Spalten
+        # Überschrift "Infos" über beide Spalten
         header_label = Gtk.Label(label="Infos")
         header_label.set_xalign(0.5)
         header_frame = Gtk.Frame()
@@ -353,41 +351,42 @@ class PokerInterface(Gtk.Window):
         header_frame.get_style_context().add_class("red-text")
         table.attach(header_frame, 0, 0, 2, 1)
 
-        # Zweite Zeile: Anzeige des Namens (zunächst leer)
+        # Zeile für den Spielernamen
         self.player_name_label = Gtk.Label(label="")
         self.player_name_label.set_xalign(0.5)
-        # Markup wird später beim Hinsetzen gesetzt (mit fett und in Grau)
         name_frame = Gtk.Frame()
         name_frame.add(self.player_name_label)
         name_frame.get_style_context().add_class("table-cell")
         table.attach(name_frame, 0, 1, 2, 1)
 
-        # Weitere Zeilen (z. B. Spielzeit, Anzahl Runden)
+        # Weitere Infos: Hier fügen wir "Spielzeit" hinzu
         data = [
             ("Spielzeit", "n.V."),
             ("Anzahl Runden", "n.V.")
         ]
+        self.info_labels = {}
         start_row = 2
-        for i, (col1, col2) in enumerate(data):
+        for i, (title, value) in enumerate(data):
             row = start_row + i
-            label1 = Gtk.Label(label=col1)
-            label2 = Gtk.Label(label=col2)
-            label1.set_size_request(185, 25)
-            label2.set_size_request(70, 25)
-            label1.set_xalign(0.0)
-            label1.set_margin_left(6)
-            label2.set_xalign(1.0)
-            label2.set_margin_right(6)
-            label1.get_style_context().add_class("green-text")
-            label2.get_style_context().add_class("green-text")
-            frame1 = Gtk.Frame()
-            frame1.add(label1)
-            frame1.get_style_context().add_class("table-cell")
-            frame2 = Gtk.Frame()
-            frame2.add(label2)
-            frame2.get_style_context().add_class("table-cell")
-            table.attach(frame1, 0, row, 1, 1)
-            table.attach(frame2, 1, row, 1, 1)
+            label_title = Gtk.Label(label=title)
+            label_time = Gtk.Label(label=value)
+            label_title.set_size_request(185, 25)
+            label_time.set_size_request(70, 25)
+            label_title.set_xalign(0.0)
+            label_title.set_margin_left(6)
+            label_time.set_xalign(1.0)
+            label_time.set_margin_right(6)
+            label_title.get_style_context().add_class("green-text")
+            label_time.get_style_context().add_class("green-text")
+            self.info_labels[title] = label_time  # Speichern in einem Dictionary
+            frame_title = Gtk.Frame()
+            frame_title.add(label_title)
+            frame_title.get_style_context().add_class("table-cell")
+            frame_time = Gtk.Frame()
+            frame_time.add(label_time)
+            frame_time.get_style_context().add_class("table-cell")
+            table.attach(frame_title, 0, row, 1, 1)
+            table.attach(frame_time, 1, row, 1, 1)
 
         self.fixed.put(table, 515, 15)
 
@@ -433,6 +432,7 @@ class PokerInterface(Gtk.Window):
             print(f"Verbindung zum Server fehlgeschlagen: {e}")
 
     def update_display(self, data):
+        # Blind-Werte
         small_blind = data.get("small_blind") or "n.V."
         big_blind = data.get("big_blind") or "n.V."
         try:
@@ -451,3 +451,18 @@ class PokerInterface(Gtk.Window):
                 self.left_labels["Big Blind"].set_text(big_blind)
             if "Nächste Blinderhöhung" in self.left_labels:
                 self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+
+        # Debug-Ausgabe, um zu prüfen, welche Daten empfangen wurden:
+        print("update_display received data:", data)
+
+        # Aktualisiere die Spielzeit in der rechten Tabelle
+        if hasattr(self, "info_labels") and "Spielzeit" in self.info_labels:
+            # Hole die Spielzeitwerte aus den Daten; falls nicht vorhanden, wird 0 genutzt.
+            game_time_minute = data.get("game_time_minute")
+            game_time_second = data.get("game_time_second")
+            if game_time_minute is None or game_time_second is None:
+                print("Warnung: Spielzeitwerte fehlen in den empfangenen Daten!")
+            game_time = f"{int(game_time_minute or 0):02}:{int(game_time_second or 0):02}"
+            self.info_labels["Spielzeit"].set_text(game_time)
+
+

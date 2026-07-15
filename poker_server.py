@@ -5,6 +5,7 @@ import socket
 from zeroconf import Zeroconf, ServiceInfo
 from data.timer_data import TimerData  # Timer-Daten
 from data.blind_data import BlindData  # Blind-Daten
+from data.game_time_data import GameTimeData
 
 # Hole die lokale IP-Adresse
 hostname = socket.gethostname()
@@ -57,6 +58,7 @@ async def handle_client(websocket):
                     print(f"❌ Spieler entfernt: {player_name}")
                     await broadcast_player_list()
 
+
             # Andere Kommandos werden verarbeitet
             if "command" in data:
                 if data["command"] == "get_status":
@@ -70,6 +72,11 @@ async def handle_client(websocket):
                     TimerData.second = data["second"]
                     TimerData.is_running = data["is_running"]
                     await broadcast_game_status()
+                elif data.get("command") == "update_game_time":
+                    GameTimeData.minute = data["game_time_minute"]
+                    GameTimeData.second = data["game_time_second"]
+                    await broadcast_game_status()
+
 
     except websockets.exceptions.ConnectionClosed:
         print("❌ Client hat die Verbindung getrennt.")
@@ -81,14 +88,15 @@ async def handle_client(websocket):
 
 
 async def send_game_status(websocket):
-    """Sendet den aktuellen Spielstatus an einen einzelnen Client."""
     game_status = {
         "small_blind": BlindData.small_blind,
         "big_blind": BlindData.big_blind,
         "minute": TimerData.minute,
         "second": TimerData.second,
         "is_running": TimerData.is_running,
-        "players": connected_players  # Aktuelle Spielerliste hinzufügen
+        "game_time_minute": GameTimeData.minute,
+        "game_time_second": GameTimeData.second,
+        "players": connected_players
     }
     await websocket.send(json.dumps(game_status))
 
@@ -104,7 +112,6 @@ async def broadcast_player_list():
 
 
 async def broadcast_game_status():
-    """Broadcastet den aktuellen Spielstatus an alle verbundenen Clients."""
     if clients:
         game_status = {
             "small_blind": BlindData.small_blind,
@@ -112,10 +119,13 @@ async def broadcast_game_status():
             "minute": TimerData.minute,
             "second": TimerData.second,
             "is_running": TimerData.is_running,
-            "players": connected_players  # Aktuelle Spielerliste hinzufügen
+            "game_time_minute": GameTimeData.minute,   # <-- Hinzufügen
+            "game_time_second": GameTimeData.second,   # <-- Hinzufügen
+            "players": connected_players
         }
         print("Sende aktualisierten Spielstatus:", game_status)
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
+
 
 
 async def main():
