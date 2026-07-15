@@ -3,6 +3,8 @@ import asyncio
 import websockets
 import json
 import os
+import threading
+
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
@@ -20,7 +22,11 @@ class PokerInterface(Gtk.Window):
         super().__init__(title="Poker Interface")
         self.set_default_size(800, 480)
         self.is_admin = is_admin  # Admin-Status speichern
-        
+
+         # Erzeuge den Event-Loop für alle Clients (Admin und normal)
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.run_async_loop, daemon=True).start()
+
         # Admin-Fenster-Referenz initialisieren
         self.admin_window = None 
 
@@ -51,10 +57,13 @@ class PokerInterface(Gtk.Window):
 
         # Timer starten
         self.start_timer()
+        
 
-        # Starte WebSocket-Client, wenn kein Admin
-        if not self.is_admin:
-            GLib.idle_add(asyncio.create_task, self.listen_for_updates())
+    def run_async_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+
 
     def pause_timer(self):
         """Pausiert den Timer und aktualisiert alle Bildschirme."""

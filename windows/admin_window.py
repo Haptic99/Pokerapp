@@ -1,4 +1,7 @@
 import gi
+import websockets
+import json
+import asyncio
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 
@@ -249,15 +252,32 @@ class AdminWindow(Gtk.Window):
         timer_window.show_all()
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
-        """Verarbeitet die bestätigten Werte aus dem BlindAdjustmentWindow und aktualisiert das Poker-Interface."""
         print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
 
-        # Blinds im Admin-Fenster aktualisieren
+        # Lokale Updates im Admin-Fenster und Poker-Interface
         self.update_blinds_table(small_blind, big_blind)
-
-        # Blinds im Poker-Interface aktualisieren
         if self.poker_interface:
             self.poker_interface.update_blinds_in_table(small_blind, big_blind)
+
+        # Sende die neuen Blinds an den Server
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_blinds(small_blind, big_blind),
+            self.poker_interface.loop  # oder den entsprechenden Event-Loop, der verwendet wird
+        )
+
+
+    async def send_update_blinds(self, small_blind, big_blind):
+        uri = "ws://192.168.1.65:8765"  # Gleiche Serveradresse verwenden
+        try:
+            async with websockets.connect(uri) as websocket:
+                message = {
+                    "command": "update_blinds",
+                    "small_blind": small_blind,
+                    "big_blind": big_blind
+                }
+                await websocket.send(json.dumps(message))
+        except Exception as e:
+            print(f"Fehler beim Senden der Blinds: {e}")
 
 
     def on_timer_values_confirmed(self, minute, second):

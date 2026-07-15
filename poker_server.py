@@ -6,7 +6,7 @@ from data.blind_data import BlindData
 
 clients = set()
 
-async def handle_client(websocket, path):
+async def handle_client(websocket):
     """Verwaltet eine neue Client-Verbindung."""
     clients.add(websocket)
     print(f"✅ Neuer Client verbunden von {websocket.remote_address}")
@@ -45,7 +45,6 @@ async def send_game_status(websocket):
     await websocket.send(json.dumps(game_status))
 
 async def broadcast_game_status():
-    """Sendet den aktuellen Spielstatus an alle verbundenen Clients."""
     if clients:
         game_status = {
             "small_blind": BlindData.small_blind,
@@ -54,7 +53,9 @@ async def broadcast_game_status():
             "second": TimerData.second,
             "is_running": TimerData.is_running
         }
+        print("Broadcasting game status:", game_status)  # Debug-Ausgabe
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
+
 
 
 async def main():
