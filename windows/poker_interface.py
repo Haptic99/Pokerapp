@@ -25,14 +25,14 @@ class PokerInterface(Gtk.Window):
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.run_async_loop, daemon=True).start()
 
-        # Spieler- oder Admin-Name (wird über den Begrüßungsbildschirm gesetzt)
+        # Spielername (wird über den Namenseingabe-Bildschirm gesetzt)
         self.player_name = None
 
         # Hauptcontainer für das Interface
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(self.main_box)
 
-        # Overlay für den Begrüßungsbildschirm
+        # Overlay für den Namenseingabe-Bildschirm und weitere Widgets
         self.overlay = Gtk.Overlay()
         self.main_box.pack_start(self.overlay, True, True, 0)
 
@@ -40,14 +40,14 @@ class PokerInterface(Gtk.Window):
         self.background_image_path = get_image_path("background_start.jpg")
         self.set_background_image(self.background_image_path)
 
-        # Fixed-Container für Buttons
+        # Fixed-Container für Buttons und Tabellen
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
 
         # Buttons erstellen
         self.create_buttons()
 
-        # Begrüßungs-Bildschirm erstellen
+        # Namenseingabe-Bildschirm erstellen (wird eingeblendet, solange kein Name vorhanden ist)
         self.create_welcome_screen()
 
         # Admin-Fenster-Referenz initialisieren
@@ -70,18 +70,22 @@ class PokerInterface(Gtk.Window):
         self.start_timer()
 
     def create_welcome_screen(self):
-        """Erstellt den Begrüßungsbildschirm mit Nameingabe."""
-        # Alle Buttons deaktivieren
+        """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
+        Dabei werden alle anderen Buttons deaktiviert, sodass nur die Namenseingabe möglich ist."""
+        # Zuerst alle Buttons deaktivieren
         self.disable_buttons()
 
-        # Begrüßungsbox
+        # Falls bereits ein Bildschirm existiert, zerstören wir ihn
+        if hasattr(self, "welcome_box") and self.welcome_box:
+                self.welcome_box.destroy()
+
         self.welcome_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.welcome_box.set_halign(Gtk.Align.CENTER)
         self.welcome_box.set_valign(Gtk.Align.CENTER)
-        self.welcome_box.set_name("welcome_box")  # Name für CSS
+        self.welcome_box.set_name("welcome_box")  # Für CSS
 
         # Begrüßungstext
-        welcome_label = Gtk.Label(label="Willkommen! Bitte geben Sie Ihren Namen ein und nehmen Sie Platz.")
+        welcome_label = Gtk.Label(label="Willkommen! Bitte geben Sie Ihren Namen ein und klicken Sie auf Weiter.")
         self.welcome_box.pack_start(welcome_label, True, True, 0)
 
         # Eingabefeld für den Namen
@@ -90,32 +94,44 @@ class PokerInterface(Gtk.Window):
         self.name_entry.connect("activate", self.on_name_entered)
         self.welcome_box.pack_start(self.name_entry, True, True, 0)
 
-        # Button "Hier hinsetzen" – hier wird lediglich der Begrüßungsbildschirm entfernt
-        start_button = Gtk.Button(label="Weiter")
-        start_button.connect("clicked", self.on_start_button_clicked)
-        self.welcome_box.pack_start(start_button, True, True, 0)
+        # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
+        weiter_button = Gtk.Button(label="Weiter")
+        weiter_button.connect("clicked", self.on_start_button_clicked)
+        self.welcome_box.pack_start(weiter_button, True, True, 0)
 
-        # Begrüßungsbox zum Overlay hinzufügen
         self.overlay.add_overlay(self.welcome_box)
+        self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
+
 
     def on_start_button_clicked(self, button):
-        """
-        Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat.
-        Der Name wird gespeichert, der Begrüßungsbildschirm entfernt und die Buttons wieder aktiviert.
-        Das eigentliche „Hinsetzen“ erfolgt erst über den Toggle-Button.
-        """
+        """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""
         name = self.name_entry.get_text().strip()
-        if name:
-            self.player_name = name
-            print(f"Benutzername: {name}")
-            self.welcome_box.destroy()
-            self.enable_buttons()
-            # Hier wird NICHT sofort eine Verbindung zum Server aufgebaut!
-        else:
-            print("Name darf nicht leer sein!")
+        if not name:
+            error_dialog = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.OK,
+                text="Fehler: Kein Name eingegeben!"
+            )
+            error_dialog.format_secondary_text("Bitte geben Sie einen Namen ein und klicken Sie auf Weiter.")
+            error_dialog.run()
+            error_dialog.destroy()
+            return
+
+        self.player_name = name
+        print(f"Benutzername: {name}")
+        # Entferne den Namenseingabe-Bildschirm
+        self.welcome_box.destroy()
+        # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
+        self.player_name_label.set_markup(f"<span foreground='#808080'><b>{name}</b></span>")
+        # Sende den Join-Request an den Server
+        asyncio.run_coroutine_threadsafe(self.send_join_message(), self.loop)
+        # Aktiviere alle Buttons (nun kann der Spieler interagieren)
+        self.enable_buttons()
 
     def on_name_entered(self, entry):
-        """Speichert den Namen und entfernt den Begrüßungsbildschirm."""
+        """Bei Enter wird die gleiche Logik wie beim Klick auf 'Weiter' ausgeführt."""
         self.on_start_button_clicked(None)
 
     def run_async_loop(self):
@@ -144,13 +160,13 @@ class PokerInterface(Gtk.Window):
             self.overlay.set_overlay_pass_through(background, True)
 
     def disable_buttons(self):
-        """Setzt alle Buttons im Hintergrund in den inaktiven Zustand."""
+        """Deaktiviert alle Buttons im Fixed-Container."""
         for child in self.fixed.get_children():
             if isinstance(child, Gtk.Button):
                 child.set_sensitive(False)
 
     def enable_buttons(self):
-        """Aktiviert alle Buttons im Hintergrund."""
+        """Aktiviert alle Buttons im Fixed-Container."""
         for child in self.fixed.get_children():
             if isinstance(child, Gtk.Button):
                 child.set_sensitive(True)
@@ -170,7 +186,7 @@ class PokerInterface(Gtk.Window):
         poker_hands_button.get_style_context().add_class("button-custom")
         self.fixed.put(poker_hands_button, 150, 416)
 
-        # Falls Admin: Button "Administration" – 40 Pixel weiter links (vorher 490, jetzt 450)
+        # Falls Admin: Button "Administration"
         if self.is_admin:
             self.administration_button = Gtk.Button(label="Administration")
             self.administration_button.set_size_request(100, 40)
@@ -178,60 +194,54 @@ class PokerInterface(Gtk.Window):
             self.administration_button.get_style_context().add_class("button-custom")
             self.fixed.put(self.administration_button, 450, 416)
 
-        # Toggle-Button zum Hinsetzen bzw. Wegsetzen – 40 Pixel weiter links (vorher 650, jetzt 610)
-        self.toggle_seat_button = Gtk.ToggleButton(label="Platz nehmen")
-        self.toggle_seat_button.set_size_request(120, 40)
-        self.toggle_seat_button.get_style_context().add_class("button-custom")
-        self.toggle_seat_button.connect("toggled", self.on_toggle_seat)
-        self.fixed.put(self.toggle_seat_button, 610, 416)
+        # Button "Platz verlassen" – immer mit diesem Label
+        self.leave_button = Gtk.Button(label="Platz verlassen")
+        self.leave_button.set_size_request(120, 40)
+        self.leave_button.get_style_context().add_class("button-custom")
+        self.leave_button.connect("clicked", self.on_leave_button_clicked)
+        # Dieser Button ist erst aktiv, wenn ein Name eingegeben wurde
+        self.leave_button.set_sensitive(False)
+        self.fixed.put(self.leave_button, 610, 416)
 
-    def on_toggle_seat(self, button):
+    def on_leave_button_clicked(self, button):
         """
-        Wenn der Toggle-Button betätigt wird:
-         - Bei Aktivierung: Bestätigungsdialog, und bei Zustimmung wird eine Join-Nachricht an den Server gesendet.
-         - Bei Deaktivierung: Bestätigungsdialog und ggf. eine Leave-Nachricht an den Server.
+        Beim Klicken des "Platz verlassen"-Buttons wird ein Bestätigungsdialog angezeigt.
+        Bei Bestätigung:
+          - Wird der Leave-Request an den Server gesendet (der aktuell gespeicherte Name wird an die Serverfunktion übergeben).
+          - Der Namensanzeige in der Tabelle wird entfernt und der Spielername gelöscht.
+          - Anschließend wird der Namenseingabe-Bildschirm erneut eingeblendet und alle Buttons deaktiviert.
         """
-        if button.get_active():
-            dialog = Gtk.MessageDialog(
-                transient_for=self,
-                flags=0,
-                message_type=Gtk.MessageType.QUESTION,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text="Hinsetzen bestätigen?"
-            )
-            dialog.format_secondary_text("Möchten Sie sich wirklich hinsetzen?")
-            response = dialog.run()
-            dialog.destroy()
-            if response == Gtk.ResponseType.YES:
-                button.set_label("Platz verlassen")
-                print("Spieler nimmt Platz.")
-                # Sende Join-Nachricht an den Server
-                asyncio.run_coroutine_threadsafe(self.send_join_message(), self.loop)
-            else:
-                button.set_active(False)
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Platz verlassen bestätigen?"
+        )
+        dialog.format_secondary_text("Möchten Sie wirklich Ihren Platz verlassen?")
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.YES:
+            print("Platz wird verlassen.")
+            # Speichere den aktuellen Namen in einer lokalen Variable
+            name_to_leave = self.player_name
+            # Sende den Leave-Request mit dem korrekten Namen an den Server
+            asyncio.run_coroutine_threadsafe(self.send_leave_message(name_to_leave), self.loop)
+            # Entferne den Namen aus der Info-Tabelle und lösche den gespeicherten Namen
+            self.player_name_label.set_text("")
+            self.player_name = None
+            # Deaktiviere alle Buttons, sodass der Benutzer nur noch den Namenseingabe-Bildschirm verwenden kann
+            self.disable_buttons()
+            # Blende den Namenseingabe-Bildschirm erneut ein
+            self.create_welcome_screen()
         else:
-            dialog = Gtk.MessageDialog(
-                transient_for=self,
-                flags=0,
-                message_type=Gtk.MessageType.QUESTION,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text="Wegsetzen bestätigen?"
-            )
-            dialog.format_secondary_text("Möchten Sie sich wirklich wegsetzen?")
-            response = dialog.run()
-            dialog.destroy()
-            if response == Gtk.ResponseType.YES:
-                button.set_label("Platz nehmen")
-                print("Spieler setzt sich weg.")
-                # Sende Leave-Nachricht an den Server
-                asyncio.run_coroutine_threadsafe(self.send_leave_message(), self.loop)
-            else:
-                button.set_active(True)
+            # Falls abgebrochen, passiert nichts
+            pass
 
     async def send_join_message(self):
-        """Stellt die Verbindung zum Server her und sendet eine Join-Nachricht mit dem Spielernamen."""
+        """Sendet eine Join-Nachricht mit dem Namen an den Server."""
         try:
-            uri = "ws://localhost:8765"  # Passe ggf. die Adresse an
+            uri = "ws://localhost:8765"  # ggf. anpassen
             async with websockets.connect(uri) as websocket:
                 message = {"action": "join", "name": self.player_name}
                 await websocket.send(json.dumps(message))
@@ -239,12 +249,12 @@ class PokerInterface(Gtk.Window):
         except Exception as e:
             print(f"Fehler beim Senden der Join-Nachricht: {e}")
 
-    async def send_leave_message(self):
-        """Stellt die Verbindung zum Server her und sendet eine Leave-Nachricht mit dem Spielernamen."""
+    async def send_leave_message(self, name):
+        """Sendet eine Leave-Nachricht mit dem übergebenen Namen an den Server."""
         try:
-            uri = "ws://localhost:8765"  # Passe ggf. die Adresse an
+            uri = "ws://localhost:8765"  # ggf. anpassen
             async with websockets.connect(uri) as websocket:
-                message = {"action": "leave", "name": self.player_name}
+                message = {"action": "leave", "name": name}
                 await websocket.send(json.dumps(message))
                 print("Leave-Nachricht gesendet.")
         except Exception as e:
@@ -280,10 +290,9 @@ class PokerInterface(Gtk.Window):
         self.admin_window = None
 
     def create_table_left(self):
-        """Erstellt eine Tabelle mit 2 Spalten und 4 Reihen auf der linken oberen Seite."""
+        """Erstellt die linke Tabelle (z. B. Blinds und Timer)."""
         self.table_left = Gtk.Grid()
 
-        # Aktuelle Blind-Werte oder Standardwerte
         small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
         big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
 
@@ -331,42 +340,54 @@ class PokerInterface(Gtk.Window):
         self.fixed.put(self.table_left, 15, 15)
 
     def create_table_right(self):
-        """Erstellt eine Tabelle mit 2 Spalten und 2 Reihen auf der rechten oberen Seite."""
+        """Erstellt die rechte Tabelle mit der Überschrift 'Infos'
+        und einer zusätzlichen Zeile für den Spielernamen."""
         table = Gtk.Grid()
 
+        # Erste Zeile: Überschrift "Infos" über beide Spalten
+        header_label = Gtk.Label(label="Infos")
+        header_label.set_xalign(0.5)
+        header_frame = Gtk.Frame()
+        header_frame.add(header_label)
+        header_frame.get_style_context().add_class("table-cell")
+        header_frame.get_style_context().add_class("red-text")
+        table.attach(header_frame, 0, 0, 2, 1)
+
+        # Zweite Zeile: Anzeige des Namens (zunächst leer)
+        self.player_name_label = Gtk.Label(label="")
+        self.player_name_label.set_xalign(0.5)
+        # Markup wird später beim Hinsetzen gesetzt (mit fett und in Grau)
+        name_frame = Gtk.Frame()
+        name_frame.add(self.player_name_label)
+        name_frame.get_style_context().add_class("table-cell")
+        table.attach(name_frame, 0, 1, 2, 1)
+
+        # Weitere Zeilen (z. B. Spielzeit, Anzahl Runden)
         data = [
-            ("Infos", ""),
             ("Spielzeit", "n.V."),
             ("Anzahl Runden", "n.V.")
         ]
-
-        for row, (col1, col2) in enumerate(data):
+        start_row = 2
+        for i, (col1, col2) in enumerate(data):
+            row = start_row + i
             label1 = Gtk.Label(label=col1)
             label2 = Gtk.Label(label=col2)
             label1.set_size_request(185, 25)
             label2.set_size_request(70, 25)
-            if row == 0:
-                label1.set_xalign(0.5)
-                frame1 = Gtk.Frame()
-                frame1.add(label1)
-                frame1.get_style_context().add_class("table-cell")
-                frame1.get_style_context().add_class("red-text")
-                table.attach(frame1, 0, row, 2, 1)
-            else:
-                label1.set_xalign(0.0)
-                label1.set_margin_left(6)
-                label2.set_xalign(1.0)
-                label2.set_margin_right(6)
-                label1.get_style_context().add_class("green-text")
-                label2.get_style_context().add_class("green-text")
-                frame1 = Gtk.Frame()
-                frame1.add(label1)
-                frame1.get_style_context().add_class("table-cell")
-                frame2 = Gtk.Frame()
-                frame2.add(label2)
-                frame2.get_style_context().add_class("table-cell")
-                table.attach(frame1, 0, row, 1, 1)
-                table.attach(frame2, 1, row, 1, 1)
+            label1.set_xalign(0.0)
+            label1.set_margin_left(6)
+            label2.set_xalign(1.0)
+            label2.set_margin_right(6)
+            label1.get_style_context().add_class("green-text")
+            label2.get_style_context().add_class("green-text")
+            frame1 = Gtk.Frame()
+            frame1.add(label1)
+            frame1.get_style_context().add_class("table-cell")
+            frame2 = Gtk.Frame()
+            frame2.add(label2)
+            frame2.get_style_context().add_class("table-cell")
+            table.attach(frame1, 0, row, 1, 1)
+            table.attach(frame2, 1, row, 1, 1)
 
         self.fixed.put(table, 515, 15)
 
@@ -401,7 +422,7 @@ class PokerInterface(Gtk.Window):
 
     async def listen_for_updates(self):
         """Empfängt Daten vom Server und aktualisiert das Interface."""
-        uri = "ws://192.168.1.65:8765"  # Passe die Adresse ggf. an
+        uri = "ws://192.168.1.65:8765"  # ggf. anpassen
         try:
             async with websockets.connect(uri) as websocket:
                 await websocket.send(json.dumps({"command": "get_status"}))
