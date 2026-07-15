@@ -226,12 +226,13 @@ class AdminWindow(Gtk.Window):
 
             # Sende den neuen Timerwert an den Server, sodass dieser broadcastet
             asyncio.run_coroutine_threadsafe(
-                AdminWindow.send_update_timer(current_minute, current_second, TimerData.is_running),
+                self.send_update_timer(current_minute, current_second, TimerData.is_running),  # 🔥 Aufruf über self
                 self.poker_interface.loop
             )
 
         # Diese Methode wird jede Sekunde aufgerufen
         return True
+
 
 
     def open_blind_adjustment_window(self, widget):
