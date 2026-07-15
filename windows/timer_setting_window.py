@@ -117,10 +117,33 @@ class TimerSettingWindow(Gtk.Window):
 		# Nur Pause & Stop aktivieren
 		self.button_pause.set_sensitive(True)
 		self.button_stop.set_sensitive(True)
+		
+		# Eingabefelder deaktivieren
+		self.disable_input_fields()
+		
+		# Fokus explizit entfernen
+		self.remove_timer_focus()
 
 	def on_stop_clicked(self, _):
 		# Blinds‑Timer stoppen
 		self.blind_timer.stop_timer()
+
+		# Setze die TimerData zurück auf die ursprünglichen Startwerte
+		TimerData.is_running = False
+		TimerData.is_paused = False
+		TimerData.minute = TimerData.start_minute
+		TimerData.second = TimerData.start_second
+
+		# Sende das Timer-Update an den Server (mit is_running=False)
+		# Dies löst das Problem bei stop_timer, wenn momentane Zeit != Startzeit
+		asyncio.run_coroutine_threadsafe(
+			self.ws_client.send_update_timer(
+				TimerData.start_minute, 
+				TimerData.start_second, 
+				False
+			),
+			self.ws_client.loop
+		)
 
 		# Alle NumPad‑Buttons wieder aktivieren
 		for btn in self.numpad_buttons:
@@ -129,6 +152,18 @@ class TimerSettingWindow(Gtk.Window):
 		# Pause und Stop bleiben deaktiviert
 		self.button_pause.set_sensitive(False)
 		self.button_stop.set_sensitive(False)
+
+	def remove_timer_focus(self):
+		"""Entfernt den Fokus von allen Eingabefeldern."""
+		# Option 1: Fokus auf ein nicht-interaktives Element setzen
+		self.fixed.grab_focus()
+		
+		# Option 2: Alternativ können wir auch den aktuellen Fokus aufheben
+		self.current_time = None
+		
+		# Ausgewählte Zeitfelder visuell deselektieren
+		self.label_minute.get_style_context().remove_class("time-selected")
+		self.label_second.get_style_context().remove_class("time-selected")
 
 	def update_timer_fields(self):
 		# Nur aktualisieren, wenn der Timer tatsächlich läuft

@@ -193,15 +193,20 @@ async def broadcast_status():
         "players": connected_players
     }
     
+    # Eine Kopie des clients-Sets erstellen, um sicher über die ursprünglichen Clients zu iterieren
+    clients_copy = clients.copy()
     to_remove = set()
-    for client in clients:
+    
+    for client in clients_copy:
         try:
             await client.send(json.dumps(status))
         except websockets.exceptions.ConnectionClosed:
             to_remove.add(client)
 
+    # Erst nach der Iteration die zu entfernenden Clients tatsächlich entfernen
     for client in to_remove:
-        clients.remove(client)
+        if client in clients:  # Sicherheitscheck, falls der Client bereits entfernt wurde
+            clients.remove(client)
 
 async def main():
     try:

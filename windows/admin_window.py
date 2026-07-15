@@ -379,7 +379,6 @@ class AdminWindow(Gtk.Window):
         )
     
     def on_timer_values_confirmed(self, minute, second):
-        print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
         TimerData.minute = minute
         TimerData.second = second
         TimerData.start_minute = minute

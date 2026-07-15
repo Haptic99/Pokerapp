@@ -167,9 +167,18 @@ class TimerController:
         
         if self.timer_type == "blind_timer":
             # Setze auf die ursprünglichen Startwerte zurück
-            minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
-            second = TimerData.start_second if TimerData.start_second is not None else "-"
+            minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+            second = TimerData.start_second if TimerData.start_second is not None else 0
             
+            # Wichtig: Stelle sicher, dass minute und second gültige numerische Werte sind
+            try:
+                minute = int(minute)
+                second = int(second)
+            except (ValueError, TypeError):
+                minute = 0
+                second = 0
+                
+            # Setze TimerData Werte
             TimerData.minute = minute
             TimerData.second = second
             TimerData.is_running = False
@@ -187,7 +196,7 @@ class TimerController:
         # UI aktualisieren
         self.update_ui_for_stopped_timer(minute, second)
         
-        # Server-Update senden
+        # Server-Update senden mit den Stop-Werten
         self.send_server_update(minute, second, False)
 
     def update_ui_for_running_timer(self):
@@ -205,6 +214,10 @@ class TimerController:
             self.ui_elements["pause_button"].set_sensitive(True)
         if "stop_button" in self.ui_elements:
             self.ui_elements["stop_button"].set_sensitive(True)
+        
+        # Fokus entfernen, falls die Methode im Parent-Window existiert
+        if hasattr(self.parent, 'remove_timer_focus'):
+            self.parent.remove_timer_focus()
 
     def update_ui_for_paused_timer(self):
         """Aktualisiert die UI für einen pausierten Timer."""
@@ -301,7 +314,7 @@ class TimerController:
             
             async with websockets.connect(uri) as websocket:
                 await websocket.send(json.dumps(message))
-                print(f"Timer update sent: {message}")
+                print(f"Ti_up_sent:{message}")
                 
         except Exception as e:
             print(f"[ERROR] Failed to send timer update: {e}")
