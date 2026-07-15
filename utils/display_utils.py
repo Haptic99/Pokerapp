@@ -7,6 +7,10 @@ def update_client_display(instance, data):
     TimerData.second = data.get("blind_time_second", TimerData.second)
     TimerData.is_running = data.get("timer_running", TimerData.is_running)
     
+    # Setze konfigurierte Startzeit aus dem Server‑Status
+    TimerData.start_minute = data.get("configured_blind_time_minute", TimerData.start_minute)
+    TimerData.start_second = data.get("configured_blind_time_second", TimerData.start_second)
+
     # --- Aktualisiere Blinds ---
     small_blind = data.get("small_blind") or "-"
     big_blind = data.get("big_blind") or "-"

@@ -216,26 +216,28 @@ class TimerController:
             self.ui_elements["stop_button"].set_sensitive(True)
 
     def update_ui_for_stopped_timer(self, minute, second):
-        """Aktualisiert die UI für einen gestoppten Timer."""
         if not self.ui_elements:
             return
-            
-        # Eingabefelder reaktivieren
+
         self.enable_input_fields()
-        
-        # Labels aktualisieren
+
         if "minute_label" in self.ui_elements:
-            self.ui_elements["minute_label"].set_text(f"{minute:02}")
+            try:
+                text = f"{int(minute):02d}"
+            except (ValueError, TypeError):
+                text = str(minute)
+            self.ui_elements["minute_label"].set_text(text)
+
         if "second_label" in self.ui_elements:
-            self.ui_elements["second_label"].set_text(f"{second:02}")
-        
-        # Buttons aktualisieren
-        if "start_button" in self.ui_elements:
-            self.ui_elements["start_button"].set_sensitive(True)
-        if "pause_button" in self.ui_elements:
-            self.ui_elements["pause_button"].set_sensitive(False)
-        if "stop_button" in self.ui_elements:
-            self.ui_elements["stop_button"].set_sensitive(False)
+            try:
+                text = f"{int(second):02d}"
+            except (ValueError, TypeError):
+                text = str(second)
+            self.ui_elements["second_label"].set_text(text)
+
+        self.ui_elements["start_button"].set_sensitive(True)
+        self.ui_elements["pause_button"].set_sensitive(False)
+        self.ui_elements["stop_button"].set_sensitive(False)
 
     def disable_input_fields(self):
         """Deaktiviert die Eingabefelder für den Timer."""
