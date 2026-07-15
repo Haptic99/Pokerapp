@@ -24,17 +24,6 @@ class PokerAdminClient(PokerInterface):
         self.loop = self.ws_client.loop
         self.uri = self.ws_client.uri
 
-    def update_timer_table(self):
-        if (TimerData.minute is None or (TimerData.minute == 0 and TimerData.second == 0)):
-            current_time_str = "-"
-        else:
-            current_time_str = format_timer_with_status(TimerData.minute, TimerData.second, TimerData.is_running)
-
-        if "Eingestellte Zeit" in self.timer_labels:
-            self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
-        if "Momentane Zeit" in self.timer_labels:
-            self.timer_labels["Momentane Zeit"].set_text(current_time_str)
-
     def update_display(self, data):
         update_client_display(self, data)
 

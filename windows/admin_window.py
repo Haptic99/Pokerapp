@@ -203,7 +203,7 @@ class AdminWindow(Gtk.Window):
         game_second = GameTimeData.second if GameTimeData.second is not None else "-"
 
         # Formatierung der Spielzeit
-        game_time_str = f"{str(game_minute).zfill(2)}:{str(game_second).zfill(2)}"
+        game_time_str = format_timer_with_status(game_minute, game_second, GameTimeData.is_running)
 
         # Daten: Eine Zeile – Titel "Spielzeit" und der Zeitwert
         data = [
@@ -433,7 +433,6 @@ class AdminWindow(Gtk.Window):
             print(f"Error sending game time update: {e}")
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
-        print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
         from data.blind_data import BlindData  # Sicherstellen, dass BlindData importiert ist
         BlindData.small_blind = small_blind
         BlindData.big_blind = big_blind

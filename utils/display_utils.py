@@ -1,14 +1,6 @@
 from utils.helpers import format_timer_with_status
 
 def update_client_display(instance, data):
-    """
-    Aktualisiert die Anzeige eines Poker-Clients basierend auf Serverdaten.
-    Diese Funktion wird von beiden Client-Typen verwendet.
-
-    Args:
-        instance: Die Client-Instanz (z. B. PokerClient, PokerAdminClient oder TimerSettingWindow)
-        data: Die vom Server empfangenen Daten (als Dictionary)
-    """
     # --- Aktualisiere Blinds ---
     small_blind = data.get("small_blind") or "-"
     big_blind = data.get("big_blind") or "-"
@@ -44,21 +36,25 @@ def update_client_display(instance, data):
         if hasattr(instance, "info_labels") and "Spielzeit" in instance.info_labels:
             game_time_text = format_timer_with_status(game_minute, game_second, game_running)
             instance.info_labels["Spielzeit"].set_text(game_time_text)
-    
-    # Aktualisiere konfigurierten Timer (Eingestellte Zeit)
-    if "configured_blind_time_minute" in data and "configured_blind_time_second" in data:
-        try:
-            configured_minute = int(data.get("configured_blind_time_minute") or 0)
-            configured_second = int(data.get("configured_blind_time_second") or 0)
-        except Exception as e:
-            print("Fehler bei der Umwandlung der konfigurierten Timer-Werte:", e)
-            configured_minute, configured_second = 0, 0
 
-        set_time_str = f"{configured_minute:02}:{configured_second:02}"
+    # --- Aktualisiere konfigurierten Timer (Eingestellte Zeit) ---
+    if "configured_blind_time_minute" in data and "configured_blind_time_second" in data:
+        configured_minute_raw = data.get("configured_blind_time_minute")
+        configured_second_raw = data.get("configured_blind_time_second")
+        if configured_minute_raw is None or configured_second_raw is None:
+            set_time_str = "-"
+        else:
+            try:
+                configured_minute = int(configured_minute_raw)
+                configured_second = int(configured_second_raw)
+                set_time_str = f"{configured_minute:02}:{configured_second:02}"
+            except Exception as e:
+                print("Fehler bei der Umwandlung der konfigurierten Timer-Werte:", e)
+                set_time_str = "-"
         if hasattr(instance, "timer_labels") and "Eingestellte Zeit" in instance.timer_labels:
             instance.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
-    
-    # Aktualisiere aktuelle Timer-Werte (Momentane Zeit) nur wenn der Timer läuft
+
+    # --- Aktualisiere aktuelle Timer-Werte (Momentane Zeit) nur wenn der Timer läuft ---
     try:
         current_minute = int(data.get("blind_time_minute") or 0)
         current_second = int(data.get("blind_time_second") or 0)

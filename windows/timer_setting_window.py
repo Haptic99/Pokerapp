@@ -74,20 +74,6 @@ class TimerSettingWindow(Gtk.Window):
 			}
 		)
 
-		# Aktualisiere den Button-Zustand basierend auf TimerData
-		if TimerData.is_running:
-			self.button_start.set_sensitive(False)
-			self.button_pause.set_sensitive(True)
-			self.button_stop.set_sensitive(True)
-		elif TimerData.is_paused:
-			self.button_start.set_sensitive(True)   # Zum Fortsetzen aktivierbar
-			self.button_pause.set_sensitive(False)
-			self.button_stop.set_sensitive(True)
-		else:
-			self.button_start.set_sensitive(True)
-			self.button_pause.set_sensitive(False)
-			self.button_stop.set_sensitive(False)
-
 		# Buttons mit dem Controller verbinden
 		self.button_start.connect("clicked", lambda w: self.blind_timer.start_timer())
 		self.button_pause.connect("clicked", lambda w: self.blind_timer.pause_timer())
@@ -282,9 +268,7 @@ class TimerSettingWindow(Gtk.Window):
 		self.current_time = time_type
 		self.new_entry = True
 		self.highlight_selected_timer()
-		print(f"[DEBUG] Selected time field: {time_type}")
-		print(f"[DEBUG] Current values - minute: {self.label_minute.get_text()}, second: {self.label_second.get_text()}")
-
+		
 
 	def highlight_selected_timer(self):
 		if self.current_time == "minute":

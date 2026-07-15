@@ -4,6 +4,7 @@ import asyncio
 import websockets
 import json
 
+
 from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
 
@@ -27,6 +28,11 @@ class TimerController:
         self.parent = parent
         self.timer_type = timer_type  # "blind_timer" oder "game_time"
         self.ui_elements = ui_elements or {}
+        
+        # Extrahiere die benötigten UI-Elemente aus dem Dictionary
+        self.button_start = self.ui_elements.get("start_button")
+        self.button_pause = self.ui_elements.get("pause_button")
+        self.button_stop = self.ui_elements.get("stop_button")
         
         # Timer-Status (nur für die lokale UI-Steuerung)
         self.is_running = False
@@ -79,7 +85,11 @@ class TimerController:
                 self.ui_elements["second_label"].set_text(second_text)
             
         # server_status ist ein Dictionary, das vom Server kommt
-        timer_running = server_status.get("timer_running", False)
+        try:
+            timer_running = server_status.get("timer_running", False)
+        except NameError:
+            timer_running = False
+            
         if timer_running:
             self.button_start.set_sensitive(False)
             self.button_pause.set_sensitive(True)
@@ -91,7 +101,6 @@ class TimerController:
 
 
     def start_timer(self):
-        print("Start Timer wurde aktiviert")
         """
         Starts the timer by sending a command to the server.
         Also updates local UI components.
@@ -102,8 +111,6 @@ class TimerController:
         if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
             minute = int(self.ui_elements["minute_label"].get_text())
             second = int(self.ui_elements["second_label"].get_text())
-        
-        print(f"[DEBUG] Starting timer with values - minute: {minute}, second: {second}")
         
         # Verify we're not starting a timer at 0:00
         if minute == 0 and second == 0:
@@ -286,7 +293,6 @@ class TimerController:
             server_ip, server_port = server_address
             uri = f"ws://{server_ip}:{server_port}"
             
-            print(f"[DEBUG] Sending timer update to {uri}: min={minute}, sec={second}, running={is_running}")
             
             message = {
                 "command": "update_timer",
@@ -297,7 +303,7 @@ class TimerController:
             
             async with websockets.connect(uri) as websocket:
                 await websocket.send(json.dumps(message))
-                print(f"[DEBUG] Timer update sent successfully: {message}")
+                print(f"Timer update sent: {message}")
                 
         except Exception as e:
             print(f"[ERROR] Failed to send timer update: {e}")
