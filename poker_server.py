@@ -35,10 +35,17 @@ connected_players = []    # Liste der Spielernamen (Reihenfolge des Logins)
 
 async def update_loop():
     while True:
-        # Falls der Blind-Timer läuft, aktualisiere ihn (Countdown)
+        # Debug timer status - Handle None values with default of 0
+        minute = 0 if TimerData.minute is None else TimerData.minute
+        second = 0 if TimerData.second is None else TimerData.second
+        current_minute = 0 if TimerData.start_minute is None else TimerData.start_minute
+        current_second = 0 if TimerData.start_second is None else TimerData.start_second
+
+        # If the blind timer is running, update it (countdown)
         if TimerData.is_running:
             if TimerData.minute == 0 and TimerData.second == 0:
                 TimerData.is_running = False
+                print(f"[DEBUG] Timer reached zero, stopping")
             else:
                 if TimerData.second > 0:
                     TimerData.second -= 1
@@ -46,14 +53,15 @@ async def update_loop():
                     TimerData.minute -= 1
                     TimerData.second = 59
 
-        # Falls die Spielzeit läuft, aktualisiere sie (hochzählen)
+        # If game time is running, update it (count up)
         if GameTimeData.is_running:
             GameTimeData.second += 1
             if GameTimeData.second >= 60:
                 GameTimeData.second = 0
                 GameTimeData.minute += 1
+            print(f"[DEBUG] Game time updated: {GameTimeData.minute:02}:{GameTimeData.second:02}")
 
-        # Sende den aggregierten Status an alle Clients
+        # Send aggregated status to all clients
         await broadcast_status()
         await asyncio.sleep(1)
 
@@ -85,6 +93,8 @@ async def handle_client(websocket):
             if data.get("command") == "start_timer":
                 TimerData.minute = int(data.get("minute", 0))
                 TimerData.second = int(data.get("second", 0))
+                TimerData.start_minute = int(data.get("minute", 0))
+                TimerData.start_second = int(data.get("second", 0))
                 TimerData.is_running = True
                 TimerData.is_paused = False
             elif data.get("command") == "pause_timer":
@@ -106,6 +116,8 @@ async def handle_client(websocket):
                 elif data["command"] == "update_timer":
                     TimerData.minute = data["minute"]
                     TimerData.second = data["second"]
+                    TimerData.start_minute = data["minute"]
+                    TimerData.start_second = data["second"]
                     TimerData.is_running = data["is_running"]
                 elif data["command"] == "update_game_time":
                     GameTimeData.minute = data["game_time_minute"]
@@ -142,6 +154,7 @@ async def broadcast_status():
     Sendet den aggregierten Status an alle verbundenen Clients.
     Hier werden alle Datenfelder zusammengeführt.
     """
+    
     if clients:
         status = {
             "small_blind": BlindData.small_blind,

@@ -148,7 +148,7 @@ class WebSocketClient:
         ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
 
         print("🔍 Suche nach dem Server...")
-        time.sleep(5)  # Warte einige Sekunden, um Dienste zu entdecken
+        time.sleep(0.1)  # Warte einige Sekunden, um Dienste zu entdecken
         zeroconf.close()
 
         if listener.server_address:

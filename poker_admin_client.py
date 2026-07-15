@@ -5,6 +5,7 @@ from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
+from utils.helpers import format_timer_with_status
 
 class PokerAdminClient(PokerInterface):
     """Der Poker‑Admin‑Client."""

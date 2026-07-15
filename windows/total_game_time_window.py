@@ -1,13 +1,12 @@
 import gi
 gi.require_version('Gtk', '3.0')
 import asyncio
-import json
-import websockets
 from gi.repository import Gtk, Gdk, GLib
 
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
 from data.game_time_data import GameTimeData
+from data.timer_data import TimerData
 from utils.timer_controller import create_game_time_timer
 
 class TotalGameTimeWindow(Gtk.Window):
@@ -17,8 +16,6 @@ class TotalGameTimeWindow(Gtk.Window):
         self.set_default_size(800, 480)
         self.set_transient_for(parent)
         self.set_modal(True)
-
-        self.timer_stopped = True
 
         # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
@@ -57,15 +54,7 @@ class TotalGameTimeWindow(Gtk.Window):
         # Keybindings für Vollbildmodus und Escape
         self.connect("key-press-event", self.on_key_press)
 
-        # Timer-Attribute
-        self.timer_id = None
-        self.is_running = False
-        self.is_paused = False
-
-        # Falls bereits ein Timer-Zustand vorliegt, diesen laden
-        self.load_existing_timer_state()
-
-        # TimerController initialisieren
+        # TimerController initialisieren - zentrale Timer-Steuerung
         self.game_timer = create_game_time_timer(
                 self, 
                 {
@@ -78,26 +67,10 @@ class TotalGameTimeWindow(Gtk.Window):
                 }
         )
     
-	# Buttons mit dem Controller verbinden
+        # Buttons mit dem Controller verbinden
         self.button_start.connect("clicked", lambda w: self.game_timer.start_timer())
         self.button_pause.connect("clicked", lambda w: self.game_timer.pause_timer())
-        self.button_stop.connect("clicked", lambda w: self.game_timer.stop_timer())
-
-    def load_existing_timer_state(self):
-        """Übernimmt den aktuellen Zustand des Timers, falls er läuft oder pausiert ist."""
-        if GameTimeData.is_running or GameTimeData.is_paused:
-            minute_value = GameTimeData.minute if GameTimeData.minute is not None else "00"
-            second_value = GameTimeData.second if GameTimeData.second is not None else "00"
-            self.label_minute.set_text(f"{int(minute_value):02}")
-            self.label_second.set_text(f"{int(second_value):02}")
-            self.disable_input_fields()
-            if GameTimeData.is_running:
-                self.is_running = True
-                self.start_timer()
-            elif GameTimeData.is_paused:
-                self.button_pause.set_sensitive(False)
-                self.button_start.set_sensitive(True)
-                self.button_stop.set_sensitive(True)
+        self.button_stop.connect("clicked", lambda w: self.on_stop_button_click)
 
     def create_timer_cells(self):
         # Container für die Zeit auf der linken Seite
@@ -156,14 +129,11 @@ class TotalGameTimeWindow(Gtk.Window):
             button.set_size_request(70, 70)
             button.get_style_context().add_class("numpad-button")
             if label == '►':
-                button.connect("clicked", self.on_start_button_click)
                 self.button_start = button
             elif label == '‖':
-                button.connect("clicked", self.on_pause_button_click)
                 self.button_pause = button
                 self.button_pause.set_sensitive(False)
             elif label == '■':
-                button.connect("clicked", self.on_stop_button_click)
                 self.button_stop = button
                 self.button_stop.set_sensitive(False)
             elif label == '←':
@@ -173,12 +143,6 @@ class TotalGameTimeWindow(Gtk.Window):
             else:
                 button.connect("clicked", self.on_numpad_button_click)
             grid.attach(button, x, y, 1, 1)
-
-    def on_pause_button_click(self, button):
-        self.pause_timer()
-
-    def on_stop_button_click(self, button):
-        self.stop_timer()
 
     def create_back_button(self):
         back_button = Gtk.Button(label="Schließen")
@@ -190,41 +154,20 @@ class TotalGameTimeWindow(Gtk.Window):
     def on_back_button_click(self, widget):
         self.close()
 
-    def stop_timer(self):
-        if self.timer_id:
-            GLib.source_remove(self.timer_id)
-            self.timer_id = None
-        self.is_running = False
-        self.is_paused = False
-
-        # Setze die Gesamtspielzeit zurück (GameTimeData)
-        self.label_minute.set_text("00")
-        self.label_second.set_text("00")
-        from data.game_time_data import GameTimeData
-        GameTimeData.minute = 0
-        GameTimeData.second = 0
-        GameTimeData.is_running = False
-        GameTimeData.is_paused = False
+    def on_stop_button_click(self, button):
+        """
+        Erweiterter Stop-Button, der auch den Blinds-Timer zurücksetzt
+        """
+        # Zuerst den Spielzeit-Timer mit dem Controller stoppen
+        self.game_timer.stop_timer()
 
         # Zusätzlich: Stoppe auch den Blinds-Timer (TimerData)
-        from data.timer_data import TimerData
         TimerData.is_running = False
         TimerData.is_paused = False
         # Optional: Setze TimerData auf die ursprünglichen Startwerte zurück
         TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
         TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
 
-        self.enable_input_fields()
-        self.button_start.set_sensitive(True)
-        self.button_pause.set_sensitive(False)
-        self.button_stop.set_sensitive(False)
-        self.timer_stopped = True
-
-        # Sende beide Updates an den Server:
-        asyncio.run_coroutine_threadsafe(
-            self.send_final_timer_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
-            self.parent.poker_interface.loop
-        )
         # Falls das Admin-Window bereits existiert, sende auch für TimerData:
         if hasattr(self.parent, 'send_update_timer'):
             asyncio.run_coroutine_threadsafe(
@@ -232,23 +175,9 @@ class TotalGameTimeWindow(Gtk.Window):
                 self.parent.poker_interface.loop
             )
 
-    async def send_final_game_time_update(self, minute, second, is_running):
-        server_ip, server_port = self.parent.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-            "command": "update_game_time",
-            "game_time_minute": minute,
-            "game_time_second": second,
-            "is_running": is_running
-        }
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(json.dumps(message))
-                print("Final game time update sent.")
-        except Exception as e:
-            print(f"Error sending final game time update: {e}")
-
-
+        # (Optional) Aktualisiere auch die Anzeige im übergeordneten Fenster
+        if hasattr(self.parent, 'update_all_timer_displays'):
+            GLib.idle_add(self.parent.update_all_timer_displays)
 
     def on_numpad_button_click(self, button):
         label_text = button.get_label()
@@ -326,129 +255,6 @@ class TotalGameTimeWindow(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
-
-    # Timer-Kontrollmethoden (hier für einen Timer, der hochzählt)
-    def on_start_button_click(self, button):
-        if not self.is_running:
-            self.start_timer()
-
-    def start_timer(self):
-        if self.timer_stopped:
-            minute = self.label_minute.get_text()
-            second = self.label_second.get_text()
-            GameTimeData.minute = int(minute)
-            GameTimeData.second = int(second)
-        self.is_running = True
-        GameTimeData.is_running = True
-        GameTimeData.is_paused = False
-        self.timer_stopped = False
-        self.disable_input_fields()
-        self.remove_timer_focus()
-        self.button_start.set_sensitive(False)
-        self.button_pause.set_sensitive(True)
-        self.button_stop.set_sensitive(True)
-        self.timer_id = GLib.timeout_add_seconds(1, self.update_timer)
-
-    def pause_timer(self):
-        if self.timer_id:
-            GLib.source_remove(self.timer_id)
-            self.timer_id = None
-        self.is_running = False
-        self.is_paused = True
-        from data.game_time_data import GameTimeData
-        GameTimeData.is_running = False
-        GameTimeData.is_paused = True
-
-        self.button_start.set_sensitive(True)
-        self.button_pause.set_sensitive(False)
-        self.button_stop.set_sensitive(True)
-
-        # Sende sofort ein Update an den Server, dass der Timer pausiert ist.
-        asyncio.run_coroutine_threadsafe(
-            self.send_pause_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
-            self.parent.poker_interface.loop
-        )
-        print("Pause-Taste gedrückt, Status gesendet:", GameTimeData.is_running)
-
-    def stop_timer(self):
-        if self.timer_id:
-            GLib.source_remove(self.timer_id)
-            self.timer_id = None
-        self.is_running = False
-        self.is_paused = False
-
-        # Setze die Gesamtspielzeit zurück (GameTimeData)
-        self.label_minute.set_text("00")
-        self.label_second.set_text("00")
-        from data.game_time_data import GameTimeData
-        GameTimeData.minute = 0
-        GameTimeData.second = 0
-        GameTimeData.is_running = False
-        GameTimeData.is_paused = False
-
-        self.enable_input_fields()
-        self.button_start.set_sensitive(True)
-        self.button_pause.set_sensitive(False)
-        self.button_stop.set_sensitive(False)
-        self.timer_stopped = True
-
-        # Sende das finale Update an den Server:
-        asyncio.run_coroutine_threadsafe(
-            self.send_final_timer_update(GameTimeData.minute, GameTimeData.second, GameTimeData.is_running),
-            self.parent.poker_interface.loop
-        )
-
-        # (Optional) Aktualisiere auch die Anzeige im übergeordneten Fenster
-        if hasattr(self.parent, 'update_all_timer_displays'):
-            GLib.idle_add(self.parent.update_all_timer_displays)
-
-
-    async def send_pause_update(self, minute, second, is_running):
-        server_ip, server_port = self.parent.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-            "command": "update_game_time",
-            "game_time_minute": minute,
-            "game_time_second": second,
-            "is_running": is_running
-        }
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(json.dumps(message))
-                print("Pause update sent for game time.")
-        except Exception as e:
-            print(f"Error sending pause update: {e}")
-
-    async def send_final_timer_update(self, minute, second, is_running):
-        server_ip, server_port = self.parent.poker_interface.server_address
-        uri = f"ws://{server_ip}:{server_port}"
-        message = {
-            "command": "update_game_time",
-            "game_time_minute": minute,
-            "game_time_second": second,
-            "is_running": is_running
-        }
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(json.dumps(message))
-                print("Final game time update sent.")
-        except Exception as e:
-            print(f"Error sending final game time update: {e}")
-
-
-    def update_timer(self):
-        minute = int(self.label_minute.get_text())
-        second = int(self.label_second.get_text())
-        # Hier wird die Zeit um 1 Sekunde erhöht
-        second += 1
-        if second >= 60:
-            minute += 1
-            second = 0
-        self.label_minute.set_text(f"{minute:02}")
-        self.label_second.set_text(f"{second:02}")
-        GameTimeData.minute = minute
-        GameTimeData.second = second
-        return True
 
     def disable_input_fields(self):
         self.button_minute.set_sensitive(False)

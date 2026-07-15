@@ -67,11 +67,6 @@ class PokerInterface(Gtk.Window):
         self.create_table_left()
         self.create_table_right()
 
-        # Timer starten
-        self.start_timer()
-
-        # Timer starten
-        self.start_game_time_timer()
 
     def create_welcome_screen(self):
         """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
@@ -297,7 +292,7 @@ class PokerInterface(Gtk.Window):
             ("Blinds", ""),
             ("Small Blind", small_blind_value),
             ("Big Blind", big_blind_value),
-            ("Nächste Blinderhöhung", "00:00")
+            ("Nächste Blinderhöhung", "-")
         ]
 
         self.left_labels = {}
@@ -403,27 +398,4 @@ class PokerInterface(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
-
-    def start_timer(self):
-        """Startet den Timer im Poker-Interface."""
-        GLib.timeout_add_seconds(1, self.update_timer)
-        
-    def start_game_time_timer(self):
-        """Startet die Spielzeit im Poker-Interface."""
-        GLib.timeout_add_seconds(1, self.update_total_game_time)
-
-    def update_timer(self):
-        """Aktualisiert die Timer-Anzeige in der linken Tabelle."""
-        minute = int(TimerData.minute) if TimerData.minute is not None else 0
-        second = int(TimerData.second) if TimerData.second is not None else 0
-        timer_text = format_timer_with_status(minute, second, TimerData.is_running)
-        self.left_labels["Nächste Blinderhöhung"].set_text(timer_text)
-        return True
-
-    def update_total_game_time(self):
-        game_time_minute = int(GameTimeData.minute) if GameTimeData.minute is not None else 0
-        game_time_second = int(GameTimeData.second) if GameTimeData.second is not None else 0
-        game_time_text = format_timer_with_status(game_time_minute, game_time_second, GameTimeData.is_running)
-        self.info_labels["Spielzeit"].set_text(game_time_text)
-        return True
 
