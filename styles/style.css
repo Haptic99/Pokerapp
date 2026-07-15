@@ -1,0 +1,184 @@
+/* styles/style.css */
+
+/* Allgemeine Stile für Buttons */
+.button-custom {
+    background-color: transparent;
+    color: white;
+    font-weight: normal;
+    font-family: "Impact", fantasy;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #5e5e5e;
+    border-radius: 5px;
+    padding-left: 28px;
+    padding-right: 28px;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+
+/* Textfarben für Labels */
+.red-text {
+    color: #CDAD00;
+    font-weight: bold;
+    font-family: "Impact", fantasy;
+    font-size: 16px;
+}
+
+.green-text {
+    color: #9FB6CD;
+    font-weight: bold;
+    font-family: "Georgia", serif;
+    font-size: 14px;
+}
+
+/* Spezielle Textstile für das Admin-Fenster */
+.red-text-Admin {
+    color: red;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.green-text-Admin {
+    color: green;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Neue Klasse für fetten Text */
+.bold-text {
+    font-weight: bold;
+}
+
+/* Tabellenzellen-Stil */
+.table-cell {
+    background-color: rgba(0, 0, 0, 0.5); /* Halbtransparenter Hintergrund */
+    padding: 0px;
+    font-weight: bold;
+}
+
+/* Neues linkes Padding für Zellen */
+.cell-label {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Zusätzliche Stile für Eingabefelder */
+.entry-field {
+    font-size: 14px;
+    padding: 5px;
+}
+
+/* Stil für Frames */
+.frame-style {
+    border: none;
+}
+
+/* Stil für Labels in Tabellen */
+.table-label {
+    padding: 5px;
+}
+
+/* Hintergrundfarbe für das Hauptfenster */
+.window-background {
+    background-color: #f0f0f0;
+}
+
+/* Stile für Grid und Fixed Layouts */
+.grid-style {
+    margin: 10px;
+}
+
+.fixed-style {
+    margin: 10px;
+}
+
+/* Stile für das NumPad-Fenster */
+.numpad-button {
+    background-color: #5e5e5e;
+    color: black;
+    font-size: 24px;
+    font-weight: bold;
+    border: none;
+    padding: 5px;
+    margin: 2px;
+    border-radius: 2.8px;
+}
+
+/* Stil für den 'Ok'-Button */
+.numpad-button-ok {
+    background-color: #4CAF50;
+    color: white;
+    font-size: 24px;
+    border-radius: 5px;
+}
+
+/* Stil für den '←'-Button */
+.numpad-button-backspace {
+    background-color: gray;
+    color: white;
+    font-size: 24px;
+    border-radius: 5px;
+}
+
+/* Stil für Blind-Titel */
+.blind-title {
+    font-size: 24px;
+    color: white;
+    margin-bottom: 5px;
+}
+
+/* Stil für Blind-Werte */
+.blind-value {
+    font-size: 36px;
+    color: white;
+}
+
+/* Stil für die Buttons um die Blind-Werte */
+.blind-button {
+    background-color: transparent;
+    border: none;
+    padding: 10px;
+}
+
+/* Hervorhebung des ausgewählten Blind-Werts */
+.blind-selected {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Stil für Zeit-Titel */
+.time-title {
+    font-size: 24px;
+    color: white;
+    margin-bottom: 5px;
+}
+
+/* Stil für Zeit-Werte */
+.time-value {
+    font-size: 36px;
+    color: white;
+}
+
+/* Stil für die Buttons um die Zeit-Werte */
+.time-button {
+    background-color: transparent;
+    border: none;
+    padding: 10px;
+}
+
+/* Hervorhebung des ausgewählten Zeit-Werts */
+.time-selected {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.error {
+    background-color: #ffcccc; /* Helles Rot */
+    transition: background-color 0.5s;
+}
+
