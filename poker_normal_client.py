@@ -46,7 +46,8 @@ class PokerClient(PokerInterface):
                 await asyncio.sleep(5)  # 5 Sekunden warten, dann erneut versuchen
 
     def update_display(self, data):
-        print("update_display aufgerufen mit:", data)
+        small_blind = data.get("small_blind", "n.V.")
+        big_blind = data.get("big_blind", "n.V.")
         try:
             minute = int(data.get("minute") or 0)
             second = int(data.get("second") or 0)
@@ -54,11 +55,22 @@ class PokerClient(PokerInterface):
             print("Fehler bei der Umwandlung von minute/second:", e)
             minute, second = 0, 0
 
+        status_text = "►" if data.get("is_running", False) else "‖"
+
         if hasattr(self, "left_labels"):
+            # Aktualisiere auch die Blind-Labels, falls erwünscht
             if "Small Blind" in self.left_labels:
-                self.left_labels["Small Blind"].set_text(f"{data.get('small_blind', 'n.V.')}")
+                self.left_labels["Small Blind"].set_text(small_blind)
             if "Big Blind" in self.left_labels:
-                self.left_labels["Big Blind"].set_text(f"{data.get('big_blind', 'n.V.')}")
+                self.left_labels["Big Blind"].set_text(big_blind)
+            # Aktualisiere das Timer-Label
+            if "Nächste Blinderhöhung" in self.left_labels:
+                new_text = f"{status_text} {minute:02}:{second:02}"
+                print("Client: Aktualisiere Timer-Label auf:", new_text)
+                self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
+
+
 
 
 

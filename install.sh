@@ -1,5 +1,5 @@
 #!/bin/bash
-# install_fonts.sh – Installation und Überprüfung der Microsoft-Schriftarten (Impact, Georgia) und websockets für Python
+# install_fonts_and_websockets.sh - Installiert Schriftarten und das websockets-Python-Paket global
 
 # Sicherstellen, dass das Skript als Root ausgeführt wird
 if [[ $EUID -ne 0 ]]; then
@@ -19,8 +19,7 @@ apt-get install -y ttf-mscorefonts-installer
 echo "Aktualisiere den Font-Cache..."
 fc-cache -f -v
 
-echo ""
-echo "Überprüfe die Installation der Schriftarten:"
+echo "\nÜberprüfe die Installation der Schriftarten:"
 
 # Überprüfung: Impact
 if fc-list | grep -qi "Impact"; then
@@ -36,16 +35,15 @@ else
   echo "✗ Die Schriftart 'Georgia' wurde nicht gefunden. Bitte überprüfe die Installation."
 fi
 
-echo ""
-echo "Installation und Überprüfung abgeschlossen."
+echo "\nInstallation und Überprüfung der Schriftarten abgeschlossen."
 
 echo "Installiere Python-Paketmanager (pip), falls nicht vorhanden..."
 apt-get install -y python3-pip
 
-echo "Installiere websockets-Paket für Python..."
-pip3 install websockets
-pip install --upgrade websockets
+echo "Installiere websockets-Paket für Python global..."
+pip3 install websockets --break-system-packages
 
+# Überprüfe die Installation von websockets
 echo "Überprüfe Installation von websockets..."
 if python3 -c "import websockets" 2>/dev/null; then
   echo "✓ Websockets wurde erfolgreich installiert."
