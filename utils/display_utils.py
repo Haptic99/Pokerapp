@@ -131,3 +131,17 @@ def update_client_display(instance, data):
             # Zeige '-' an, wenn Rundenzahl 0 ist, sonst zeige die Rundenzahl
             rounds_text = "-" if rounds_count == 0 else str(rounds_count)
             instance.info_labels["Anzahl Runden"].set_text(rounds_text)
+    
+    # --- Aktualisiere Chipwerte, falls vorhanden ---
+    if "chip_values" in data:
+        chip_values = data.get("chip_values", {})
+        # Aktualisiere die lokalen ChipData.chf_values
+        ChipData.chf_values.update(chip_values)
+        
+        # Falls wir uns im ChipValueWindow befinden, aktualisiere die Labels
+        if hasattr(instance, "chf_labels") and isinstance(instance.chf_labels, dict):
+            for chip_file, label in instance.chf_labels.items():
+                chf_value = ChipData.chf_values.get(chip_file, 0.0)
+                # Zeige "-" an, wenn Wert 0 ist
+                chf_display = "-" if chf_value == 0.0 else f"CHF {chf_value:.2f}"
+                label.set_text(chf_display)

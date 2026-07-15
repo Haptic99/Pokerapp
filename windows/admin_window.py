@@ -16,7 +16,7 @@ from data.game_time_data import GameTimeData
 from utils.websocket_utils import WebSocketClient
 from utils.display_utils import update_client_display
 from windows.round_management_window import RoundManagementWindow
-from windows.chip_value_admin_window import ChipValueAdminWindow
+from windows.chip_value_window import ChipValueWindow
 
 
 class AdminWindow(Gtk.Window):
@@ -151,7 +151,7 @@ class AdminWindow(Gtk.Window):
         chip_value_admin_button.connect("enter-notify-event", self.on_hover)
         chip_value_admin_button.connect("leave-notify-event", self.on_leave)
         chip_value_admin_button.get_style_context().add_class("button-custom")
-        self.fixed.put(chip_value_admin_button, 605, 80)  # Unter Spielerplatzierung
+        self.fixed.put(chip_value_admin_button, 605, 120)  # Unter Spielerplatzierung
 
         # Tabelle für Blinds erstellen
         self.create_blinds_table()
@@ -175,10 +175,11 @@ class AdminWindow(Gtk.Window):
     # NEUE METHODE: Chip Value Admin-Fenster öffnen
     def open_chip_value_admin_window(self, widget):
         """Öffnet das Chipwerte-Admin-Fenster."""
-        chip_value_admin_window = ChipValueAdminWindow(self)
+        # Benutzt jetzt die einheitliche ChipValueWindow mit is_admin=True
+        chip_value_window = ChipValueWindow(self, is_admin=True)
         if self.is_fullscreen_mode:
-            chip_value_admin_window.fullscreen()
-        chip_value_admin_window.show_all()
+            chip_value_window.fullscreen()
+        chip_value_window.show_all()
 
     def create_rounds_table(self):
         from data.round_data import RoundData
