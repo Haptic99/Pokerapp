@@ -37,17 +37,26 @@ class TimerController:
         self.load_initial_state()
 
     def load_initial_state(self):
-        """Lädt den aktuellen Timer-Zustand aus den globalen Daten."""
-        if self.timer_type == "blind_timer":
-            self.is_running = TimerData.is_running
-            self.is_paused = TimerData.is_paused
-            
-            if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
-                minute = TimerData.minute if TimerData.minute is not None else 0
-                second = TimerData.second if TimerData.second is not None else 0
-                self.ui_elements["minute_label"].set_text(f"{int(minute):02}")
-                self.ui_elements["second_label"].set_text(f"{int(second):02}")
+        if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
+            # Hole die Werte – falls nicht gesetzt, wird "-" verwendet
+            minute = TimerData.minute if TimerData.minute is not None else 0
+            second = TimerData.second if TimerData.second is not None else 0
+            # Versuche, den Minutenwert zu konvertieren
+            try:
+                minute_int = int(minute)
+                minute_text = f"{minute_int:02}"
+            except (ValueError, TypeError):
+                minute_text = "-"
+            # Versuche, den Sekundenwert zu konvertieren
+            try:
+                second_int = int(second)
+                second_text = f"{second_int:02}"
+            except (ValueError, TypeError):
+                second_text = "-"
                 
+            self.ui_elements["minute_label"].set_text(minute_text)
+            self.ui_elements["second_label"].set_text(second_text)
+                    
         elif self.timer_type == "game_time":
             self.is_running = GameTimeData.is_running
             self.is_paused = GameTimeData.is_paused
@@ -55,19 +64,31 @@ class TimerController:
             if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
                 minute = GameTimeData.minute if GameTimeData.minute is not None else 0
                 second = GameTimeData.second if GameTimeData.second is not None else 0
-                self.ui_elements["minute_label"].set_text(f"{int(minute):02}")
-                self.ui_elements["second_label"].set_text(f"{int(second):02}")
-        
-        # UI-Status aktualisieren, wenn Timer läuft
-        if self.is_running and self.ui_elements:
-            self.disable_input_fields()
+                try:
+                    minute_int = int(minute)
+                    minute_text = f"{minute_int:02}"
+                except (ValueError, TypeError):
+                    minute_text = "-"
+                try:
+                    second_int = int(second)
+                    second_text = f"{second_int:02}"
+                except (ValueError, TypeError):
+                    second_text = "-"
+                    
+                self.ui_elements["minute_label"].set_text(minute_text)
+                self.ui_elements["second_label"].set_text(second_text)
             
-            if "start_button" in self.ui_elements:
-                self.ui_elements["start_button"].set_sensitive(False)
-            if "pause_button" in self.ui_elements:
-                self.ui_elements["pause_button"].set_sensitive(True)
-            if "stop_button" in self.ui_elements:
-                self.ui_elements["stop_button"].set_sensitive(True)
+        # server_status ist ein Dictionary, das vom Server kommt
+        timer_running = server_status.get("timer_running", False)
+        if timer_running:
+            self.button_start.set_sensitive(False)
+            self.button_pause.set_sensitive(True)
+            self.button_stop.set_sensitive(True)
+        else:
+            self.button_start.set_sensitive(True)
+            self.button_pause.set_sensitive(False)
+            self.button_stop.set_sensitive(False)
+
 
     def start_timer(self):
         print("Start Timer wurde aktiviert")
@@ -115,15 +136,15 @@ class TimerController:
             TimerData.is_paused = True
             
             # UI-Status für pause aktualisieren
-            minute = TimerData.minute if TimerData.minute is not None else 0
-            second = TimerData.second if TimerData.second is not None else 0
+            minute = TimerData.minute if TimerData.minute is not None else "-"
+            second = TimerData.second if TimerData.second is not None else "-"
         else:  # game_time
             GameTimeData.is_running = False
             GameTimeData.is_paused = True
             
             # UI-Status für pause aktualisieren
-            minute = GameTimeData.minute if GameTimeData.minute is not None else 0
-            second = GameTimeData.second if GameTimeData.second is not None else 0
+            minute = GameTimeData.minute if GameTimeData.minute is not None else "-"
+            second = GameTimeData.second if GameTimeData.second is not None else "-"
         
         # UI aktualisieren
         self.update_ui_for_paused_timer()
@@ -143,8 +164,8 @@ class TimerController:
         
         if self.timer_type == "blind_timer":
             # Setze auf die ursprünglichen Startwerte zurück
-            minute = TimerData.start_minute if TimerData.start_minute is not None else 0
-            second = TimerData.start_second if TimerData.start_second is not None else 0
+            minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
+            second = TimerData.start_second if TimerData.start_second is not None else "-"
             
             TimerData.minute = minute
             TimerData.second = second

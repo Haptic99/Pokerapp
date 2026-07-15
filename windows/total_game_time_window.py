@@ -165,8 +165,8 @@ class TotalGameTimeWindow(Gtk.Window):
         TimerData.is_running = False
         TimerData.is_paused = False
         # Optional: Setze TimerData auf die ursprünglichen Startwerte zurück
-        TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
-        TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
+        TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
+        TimerData.second = TimerData.start_second if TimerData.start_second is not None else "-"
 
         # Falls das Admin-Window bereits existiert, sende auch für TimerData:
         if hasattr(self.parent, 'send_update_timer'):

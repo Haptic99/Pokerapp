@@ -10,8 +10,8 @@ def update_client_display(instance, data):
         data: Die vom Server empfangenen Daten (als Dictionary)
     """
     # --- Aktualisiere Blinds ---
-    small_blind = data.get("small_blind") or "n.V."
-    big_blind = data.get("big_blind") or "n.V."
+    small_blind = data.get("small_blind") or "-"
+    big_blind = data.get("big_blind") or "-"
     try:
         blind_minute = int(data.get("blind_time_minute") or 0)
         blind_second = int(data.get("blind_time_second") or 0)

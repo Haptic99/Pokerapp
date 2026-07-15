@@ -119,7 +119,6 @@ class PokerInterface(Gtk.Window):
             return
 
         self.player_name = name
-        print(f"Benutzername: {name}")
         # Entferne den Namenseingabe-Bildschirm
         self.welcome_box.destroy()
         # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
@@ -285,8 +284,8 @@ class PokerInterface(Gtk.Window):
         """Erstellt die linke Tabelle (z. B. Blinds und Timer)."""
         self.table_left = Gtk.Grid()
 
-        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
-        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
 
         data = [
             ("Blinds", ""),
@@ -319,7 +318,6 @@ class PokerInterface(Gtk.Window):
                 label1.get_style_context().add_class("green-text")
                 label2.get_style_context().add_class("green-text")
                 self.left_labels[col1] = label2
-                print(f"🔧 Initialisiere Label: {col1}")
                 frame1 = Gtk.Frame()
                 frame1.add(label1)
                 frame1.get_style_context().add_class("table-cell")
@@ -353,8 +351,8 @@ class PokerInterface(Gtk.Window):
 
         # Weitere Infos: Hier fügen wir "Spielzeit" hinzu
         data = [
-            ("Spielzeit", "n.V."),
-            ("Anzahl Runden", "n.V.")
+            ("Spielzeit", "-"),
+            ("Anzahl Runden", "-")
         ]
         self.info_labels = {}
         start_row = 2

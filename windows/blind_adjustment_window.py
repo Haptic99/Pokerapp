@@ -67,8 +67,8 @@ class BlindAdjustmentWindow(Gtk.Window):
         vbox.pack_start(label_small_title, False, False, 5)
 
         # Aktuelle Blind-Werte abrufen oder 'n.V.' setzen, wenn None
-        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "0"
-        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "0"
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
 
         # Small Blind Wert
         self.label_small_blind = Gtk.Label(label=small_blind_value)

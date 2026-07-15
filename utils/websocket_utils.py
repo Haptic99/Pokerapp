@@ -147,13 +147,10 @@ class WebSocketClient:
         listener = MyListener()
         ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
 
-        print("🔍 Suche nach dem Server...")
         time.sleep(0.1)  # Warte einige Sekunden, um Dienste zu entdecken
         zeroconf.close()
 
         if listener.server_address:
-            print(f"✅ Server gefunden unter {listener.server_address}")
             return listener.server_address
         else:
-            print("❌ Kein Server gefunden. Verwende eine Standard-Adresse.")
             return None  # Hier kann ein Fallback verwendet werden

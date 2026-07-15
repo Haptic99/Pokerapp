@@ -17,5 +17,7 @@ class MyListener:
         info = zeroconf.get_service_info(type, name)
         if info:
             addr = socket.inet_ntoa(info.addresses[0])
-            print(f"Gefundener Server: {name} unter {addr}:{info.port}")
             self.server_address = (addr, info.port)
+
+    def update_service(self, zeroconf, type, name):
+        pass

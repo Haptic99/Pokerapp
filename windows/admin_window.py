@@ -79,8 +79,8 @@ class AdminWindow(Gtk.Window):
         return True  # Damit der Timer weiterläuft
 
     def update_game_time_table(self):
-        game_minute = GameTimeData.minute if GameTimeData.minute is not None else 0
-        game_second = GameTimeData.second if GameTimeData.second is not None else 0
+        game_minute = GameTimeData.minute if GameTimeData.minute is not None else "-"
+        game_second = GameTimeData.second if GameTimeData.second is not None else "-"
         
         game_time_str = format_timer_with_status(game_minute, game_second, GameTimeData.is_running)
         
@@ -154,8 +154,8 @@ class AdminWindow(Gtk.Window):
         self.blinds_table.set_margin_top(10)
         self.blinds_table.set_margin_left(40)
 
-        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
-        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
 
         data = [
             ("Small Blind", small_blind_value),
@@ -199,8 +199,8 @@ class AdminWindow(Gtk.Window):
         self.game_time_table.set_margin_left(40)
 
         # Hole die aktuelle Spielzeit
-        game_minute = GameTimeData.minute if GameTimeData.minute is not None else 0
-        game_second = GameTimeData.second if GameTimeData.second is not None else 0
+        game_minute = GameTimeData.minute if GameTimeData.minute is not None else "-"
+        game_second = GameTimeData.second if GameTimeData.second is not None else "-"
 
         # Formatierung der Spielzeit
         game_time_str = f"{str(game_minute).zfill(2)}:{str(game_second).zfill(2)}"
@@ -484,8 +484,8 @@ class AdminWindow(Gtk.Window):
 
     def update_blinds_table(self):
         # Hole die aktuellen Werte – falls None, setze einen Standardwert
-        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
-        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
         
         # Aktualisiere die Labels
         if "Small Blind" in self.blind_labels:
@@ -533,12 +533,15 @@ class AdminWindow(Gtk.Window):
             self.is_fullscreen_mode = True
 
     def update_all_timer_displays(self):
-            minute = int(TimerData.minute) if TimerData.minute is not None else 0
-            second = int(TimerData.second) if TimerData.second is not None else 0
-            status_text = "" if TimerData.is_running else "‖"
-
+            minute = int(TimerData.minute) if TimerData.minute is not None else "-"
+            second = int(TimerData.second) if TimerData.second is not None else "-"
+            
             if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+                if minute == "-":
+                    self.left_labels["Nächste Blinderhöhung"].set_text("minute")
+                else:
+                    status_text = "" if TimerData.is_running else "‖"
+                    self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
 
             if hasattr(self, "timer_labels") and "Momentane Zeit" in self.timer_labels:
                 self.timer_labels["Momentane Zeit"].set_text(f"{status_text} {minute:02}:{second:02}")

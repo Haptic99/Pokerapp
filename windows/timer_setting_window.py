@@ -74,8 +74,19 @@ class TimerSettingWindow(Gtk.Window):
 			}
 		)
 
-		print("Jetzt kommt false oder true")
-		print(TimerData.is_running)
+		# Aktualisiere den Button-Zustand basierend auf TimerData
+		if TimerData.is_running:
+			self.button_start.set_sensitive(False)
+			self.button_pause.set_sensitive(True)
+			self.button_stop.set_sensitive(True)
+		elif TimerData.is_paused:
+			self.button_start.set_sensitive(True)   # Zum Fortsetzen aktivierbar
+			self.button_pause.set_sensitive(False)
+			self.button_stop.set_sensitive(True)
+		else:
+			self.button_start.set_sensitive(True)
+			self.button_pause.set_sensitive(False)
+			self.button_stop.set_sensitive(False)
 
 		# Buttons mit dem Controller verbinden
 		self.button_start.connect("clicked", lambda w: self.blind_timer.start_timer())
@@ -89,7 +100,16 @@ class TimerSettingWindow(Gtk.Window):
 		self.ws_client.start_async_loop()
 
 	def update_display(self, data):
-		update_client_display(self, data)
+		# data enthält den Serverstatus, inklusive "timer_running"
+		timer_running = data.get("timer_running", False)
+		if timer_running:
+			self.button_start.set_sensitive(False)
+			self.button_pause.set_sensitive(True)
+			self.button_stop.set_sensitive(True)
+		else:
+			self.button_start.set_sensitive(True)
+			self.button_pause.set_sensitive(False)
+			self.button_stop.set_sensitive(False)
 
 	def create_timer_cells(self):
 		# Container für die Zeit auf der linken Seite
@@ -107,8 +127,8 @@ class TimerSettingWindow(Gtk.Window):
 			self.label_minute = Gtk.Label(label="00")
 		else:
 			self.label_minute = Gtk.Label(label=f"{TimerData.minute:02}")
-			minute = int(TimerData.minute) if TimerData.minute is not None else 0
-			second = int(TimerData.second) if TimerData.second is not None else 0
+			minute = int(TimerData.minute) if TimerData.minute is not None else "-"
+			second = int(TimerData.second) if TimerData.second is not None else "-"
 			timer_text = format_timer_with_status(minute, second, TimerData.is_running)
 			print(timer_text)
 		self.label_minute.get_style_context().add_class("time-value")
@@ -299,8 +319,8 @@ class TimerSettingWindow(Gtk.Window):
 		"""
 		
 		# Hole die aktuellen Werte aus TimerData
-		current_minute = TimerData.minute if TimerData.minute is not None else 0
-		current_second = TimerData.second if TimerData.second is not None else 0
+		current_minute = TimerData.minute if TimerData.minute is not None else "-"
+		current_second = TimerData.second if TimerData.second is not None else "-"
 		
 		# Wenn der Timer läuft oder pausiert ist, aktualisiere die Anzeige
 		# mit den Werten vom Server und stelle sicher, dass die Eingabefelder

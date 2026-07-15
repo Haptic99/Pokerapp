@@ -6,6 +6,7 @@ from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
 from utils.helpers import format_timer_with_status
+from data.timer_data import TimerData
 
 class PokerAdminClient(PokerInterface):
     """Der Poker‑Admin‑Client."""
@@ -24,20 +25,15 @@ class PokerAdminClient(PokerInterface):
         self.uri = self.ws_client.uri
 
     def update_timer_table(self):
-        from data.timer_data import TimerData
-	
-        set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0
-        set_second = TimerData.start_second if TimerData.start_second is not None else 0
-        current_minute = TimerData.minute if TimerData.minute is not None else 0
-        current_second = TimerData.second if TimerData.second is not None else 0
-	
-        set_time_str = f"{set_minute:02}:{set_second:02}"
-        current_time_str = format_timer_with_status(current_minute, current_second, TimerData.is_running)
+        if (TimerData.minute is None or (TimerData.minute == 0 and TimerData.second == 0)):
+            current_time_str = "-"
+        else:
+            current_time_str = format_timer_with_status(TimerData.minute, TimerData.second, TimerData.is_running)
 
         if "Eingestellte Zeit" in self.timer_labels:
-                self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
+            self.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
         if "Momentane Zeit" in self.timer_labels:
-                self.timer_labels["Momentane Zeit"].set_text(current_time_str)
+            self.timer_labels["Momentane Zeit"].set_text(current_time_str)
 
     def update_display(self, data):
         update_client_display(self, data)

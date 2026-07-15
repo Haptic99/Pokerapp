@@ -36,10 +36,10 @@ connected_players = []    # Liste der Spielernamen (Reihenfolge des Logins)
 async def update_loop():
     while True:
         # Debug timer status - Handle None values with default of 0
-        minute = 0 if TimerData.minute is None else TimerData.minute
-        second = 0 if TimerData.second is None else TimerData.second
-        current_minute = 0 if TimerData.start_minute is None else TimerData.start_minute
-        current_second = 0 if TimerData.start_second is None else TimerData.start_second
+        minute = "-" if TimerData.minute is None else TimerData.minute
+        second = "-" if TimerData.second is None else TimerData.second
+        current_minute = "-" if TimerData.start_minute is None else TimerData.start_minute
+        current_second = "-" if TimerData.start_second is None else TimerData.start_second
 
         # If the blind timer is running, update it (countdown)
         if TimerData.is_running:
@@ -103,8 +103,8 @@ async def handle_client(websocket):
             elif data.get("command") == "stop_timer":
                 TimerData.is_running = False
                 TimerData.is_paused = False
-                TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
-                TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
+                TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else "-"
+                TimerData.second = TimerData.start_second if TimerData.start_second is not None else "-"
 
             # Weitere Befehle zur Aktualisierung einzelner Datenfelder
             if "command" in data:
