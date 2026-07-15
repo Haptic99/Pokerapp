@@ -29,6 +29,12 @@ class PokerHandsWindow(Gtk.Window):
             image.set_halign(Gtk.Align.CENTER)
             image.set_valign(Gtk.Align.CENTER)
 
+        # Variable zum Speichern des Vollbildstatus
+        self.is_fullscreen_mode = False
+
+        # Key-Press-Event verbinden
+        self.connect("key-press-event", self.on_key_press)
+
         # Close button
         close_button = Gtk.Button(label="Schliessen")
         close_button.set_size_request(80, 40)

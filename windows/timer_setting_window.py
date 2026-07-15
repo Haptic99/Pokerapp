@@ -51,6 +51,9 @@ class TimerSettingWindow(Gtk.Window):
         # Bestätigungs-Callback
         self.confirm_callback = confirm_callback
 
+        # Variable zum Speichern des Vollbildstatus
+        self.is_fullscreen_mode = False
+
         # Keybindings für Vollbildmodus und Escape
         self.connect("key-press-event", self.on_key_press)
 

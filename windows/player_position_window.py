@@ -27,6 +27,12 @@ class PlayerPositionWindow(Gtk.Window):
                 # Pokertisch hinzufügen (grüne Matte)
                 self.add_pokertisch()
 
+                # Variable zum Speichern des Vollbildstatus
+                self.is_fullscreen_mode = False
+
+                # Key-Press-Event verbinden
+                self.connect("key-press-event", self.on_key_press)
+
                 # Spielerplätze hinzufügen
                 self.initialize_player_positions()
 
@@ -35,6 +41,16 @@ class PlayerPositionWindow(Gtk.Window):
 
                 # Schließen-Button hinzufügen
                 self.add_close_button()
+
+        def on_key_press(self, widget, event):
+                if event.keyval == Gdk.KEY_Escape:
+                        if self.is_fullscreen_mode:
+                                self.unfullscreen()
+                                self.is_fullscreen_mode = False
+                        else:
+                                self.close()
+                elif event.keyval == Gdk.KEY_F11:
+                        self.toggle_fullscreen()
 
         def on_close(self, widget):
                 """Behandelt das Schließen des Fensters."""
