@@ -7,6 +7,7 @@ from gi.repository import Gtk, Gdk, GLib
 
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
+from windows.player_position_window import PlayerPositionWindow
 from windows.blind_adjustment_window import BlindAdjustmentWindow
 from windows.timer_setting_window import TimerSettingWindow
 from data.blind_data import BlindData

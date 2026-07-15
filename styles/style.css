@@ -19,6 +19,13 @@ GtkEventBox {
 }
 
 
+.player-name {
+    color: white; /* Weiße Schrift */
+    font-weight: bold; /* Fettgedruckt */
+    font-size: 16px; /* Größere Schrift */
+}
+
+
 /* Simulierter halbtransparenter Effekt für den Hintergrund */
 GtkWindow {
     background: rgba(43, 43, 43, 0.7); /* Semitransparenter Hintergrund */
