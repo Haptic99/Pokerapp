@@ -1,5 +1,5 @@
 #!/bin/bash
-# install_fonts_and_websockets.sh - Installiert Schriftarten und das websockets-Python-Paket global
+# install_fonts_and_websockets.sh - Installiert Schriftarten und die benötigten Python-Pakete (websockets und zeroconf) global
 
 # Sicherstellen, dass das Skript als Root ausgeführt wird
 if [[ $EUID -ne 0 ]]; then
@@ -49,6 +49,17 @@ if python3 -c "import websockets" 2>/dev/null; then
   echo "✓ Websockets wurde erfolgreich installiert."
 else
   echo "✗ Websockets konnte nicht installiert werden. Bitte überprüfe die Installation."
+fi
+
+echo "Installiere zeroconf-Paket für Python global..."
+pip3 install zeroconf --break-system-packages
+
+# Überprüfe die Installation von zeroconf
+echo "Überprüfe Installation von zeroconf..."
+if python3 -c "import zeroconf" 2>/dev/null; then
+  echo "✓ Zeroconf wurde erfolgreich installiert."
+else
+  echo "✗ Zeroconf konnte nicht installiert werden. Bitte überprüfe die Installation."
 fi
 
 echo "Alle Installationen abgeschlossen."
