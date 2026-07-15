@@ -47,6 +47,16 @@ class TimerSettingWindow(Gtk.Window):
 		# NumPad erstellen
 		self.create_numpad()
 
+		# Wenn Timer läuft oder pausiert ist: NumPad **und** Zeit‑Felder deaktivieren
+		if TimerData.is_running or TimerData.is_paused:
+			for btn in self.numpad_buttons:
+				btn.set_sensitive(False)
+			self.button_minute.set_sensitive(False)
+			self.button_second.set_sensitive(False)
+			self.button_start.set_sensitive(False)
+			self.button_pause.set_sensitive(True)
+			self.button_stop.set_sensitive(True)
+
 		# "Zurück" Button hinzufügen
 		self.create_back_button()
 
