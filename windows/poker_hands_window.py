@@ -4,7 +4,6 @@ import gi
 import os
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GdkPixbuf
-
 from utils.helpers import set_background_image_in_overlay
 from utils.resources import get_image_path
 

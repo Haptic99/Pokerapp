@@ -10,12 +10,22 @@ from utils.helpers import load_css, set_background_image
 from utils.resources import get_image_path
 from data.blind_data import BlindData
 from data.timer_data import TimerData
+from windows.admin_window import AdminWindow
+from windows.poker_hands_window import PokerHandsWindow
+
+
 
 class PokerInterface(Gtk.Window):
     def __init__(self, is_admin=False):
         super().__init__(title="Poker Interface")
         self.set_default_size(800, 480)
         self.is_admin = is_admin  # Admin-Status speichern
+        
+        # Admin-Fenster-Referenz initialisieren
+        self.admin_window = None 
+
+        # Vollbildmodus-Status (wichtig für Admin-Fenster)
+        self.is_fullscreen_mode = False
 
         # CSS laden
         load_css()
@@ -248,7 +258,6 @@ class PokerInterface(Gtk.Window):
         poker_window.show_all()
 
     def open_admin_window(self):
-            
         """Öffnet das Admin-Fenster und speichert die Referenz."""
         if self.admin_window is None:  # Nur ein Admin-Window zulassen
             self.admin_window = AdminWindow(self)
@@ -256,6 +265,11 @@ class PokerInterface(Gtk.Window):
             self.admin_window.connect("destroy", self.on_admin_window_closed)
         else:
             self.admin_window.present()  # Bringt das Fenster nach vorne
+
+    def on_admin_window_closed(self, widget):
+        """Setzt die Referenz zurück, wenn das Admin-Fenster geschlossen wird."""
+        self.admin_window = None
+
 
     def on_admin_window_closed(self, widget):
         """Setzt die Referenz auf None, wenn das Admin-Fenster geschlossen wird."""
