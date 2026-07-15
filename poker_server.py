@@ -35,6 +35,25 @@ clients = set()              # Liste der verbundenen Clients
 connected_players = []       # Liste der Spielernamen (in Reihenfolge des Logins)
 
 
+async def timer_loop():
+    """Zentraler Timer, der jede Sekunde läuft und den Timer aktualisiert."""
+    while True:
+        # Aktualisiere nur, wenn der Timer aktiv läuft:
+        if TimerData.is_running:
+            # Beispiel für einen Countdown (anpassen, wenn du einen Aufwärtstimer möchtest):
+            if TimerData.minute == 0 and TimerData.second == 0:
+                # Timer abgelaufen – stoppe ihn
+                TimerData.is_running = False
+            else:
+                if TimerData.second > 0:
+                    TimerData.second -= 1
+                else:
+                    TimerData.minute -= 1
+                    TimerData.second = 59
+            # Broadcast an alle Clients
+            await broadcast_game_status()
+        await asyncio.sleep(1)
+
 async def handle_client(websocket):
     """Verwaltet eine neue Client-Verbindung."""
     clients.add(websocket)
@@ -57,6 +76,25 @@ async def handle_client(websocket):
                     connected_players.remove(player_name)
                     print(f"❌ Spieler entfernt: {player_name}")
                     await broadcast_player_list()
+
+            if data.get("command") == "start_timer":
+                # Starte den Timer mit den übergebenen Startwerten
+                TimerData.minute = int(data.get("minute", 0))
+                TimerData.second = int(data.get("second", 0))
+                TimerData.is_running = True
+                TimerData.is_paused = False
+                await broadcast_game_status()
+            elif data.get("command") == "pause_timer":
+                TimerData.is_running = False
+                TimerData.is_paused = True
+                await broadcast_game_status()
+            elif data.get("command") == "stop_timer":
+                TimerData.is_running = False
+                TimerData.is_paused = False
+                # Optional: Setze TimerData auf die Startwerte zurück oder auf 0
+                TimerData.minute = TimerData.start_minute if TimerData.start_minute is not None else 0
+                TimerData.second = TimerData.start_second if TimerData.start_second is not None else 0
+                await broadcast_game_status()
 
 
             # Andere Kommandos werden verarbeitet
@@ -130,19 +168,18 @@ async def broadcast_game_status():
 
 
 async def main():
-    """Startet den WebSocket-Server."""
     try:
         async with websockets.serve(handle_client, "0.0.0.0", port):
             print(f"Poker-Server läuft auf Port {port}")
-            await asyncio.Future()  # Lässt den Server unbegrenzt laufen
+            # Starte den zentralen Timer-Loop
+            asyncio.create_task(timer_loop())
+            await asyncio.Future()  # Lässt den Server laufen
     except Exception as e:
         print(f"❌ Fehler beim Starten des Servers: {e}")
     finally:
-        # Zeroconf-Service deregistrieren
-        print("Deregistere den Zeroconf-Service...")
+        # Zeroconf-Deregistrierung etc.
         zeroconf.unregister_service(info)
         zeroconf.close()
-
 
 if __name__ == "__main__":
     asyncio.run(main())  # Startet den Event-Loop

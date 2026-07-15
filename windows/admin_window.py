@@ -54,6 +54,9 @@ class AdminWindow(Gtk.Window):
         # Benutzeroberfläche erstellen
         self.create_ui()
 
+        # Starte einen Timer, der die Blind-Tabelle jede Sekunde aktualisiert
+        GLib.timeout_add_seconds(1, self.update_blinds_table)
+
         # Timer für Admin-Fenster starten
         self.start_admin_timer()
         # ★ Hier starten wir auch den Spielzeit-Timer:
@@ -113,8 +116,10 @@ class AdminWindow(Gtk.Window):
 
 
     def open_total_game_time_window(self, widget):
-        # Öffnet das Gesamtspielzeit-Fenster
-        total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(self)
+        # Öffnet das Gesamtspielzeit-Fenster mit einem Dummy-Callback
+        total_time_window = __import__("windows.total_game_time_window", fromlist=["TotalGameTimeWindow"]).TotalGameTimeWindow(
+            self, confirm_callback=lambda *args: None
+        )
         total_time_window.show_all()
 
     def create_blinds_table(self):
@@ -212,6 +217,53 @@ class AdminWindow(Gtk.Window):
         # Positioniere die Tabelle – hier als Beispiel bei (180, 224)
         self.fixed.put(self.game_time_table, 180, 224)
 
+    async def send_start_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "start_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": True
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Start Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Start-Timers: {e}")
+
+    async def send_pause_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "pause_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": False
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Pause Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Pause-Timers: {e}")
+
+    async def send_stop_timer(self, minute, second):
+        server_ip, server_port = self.poker_interface.server_address
+        uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "stop_timer",
+             "minute": minute,
+             "second": second,
+             "is_running": False
+        }
+        try:
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Stop Timer Update gesendet.")
+        except Exception as e:
+             print(f"Fehler beim Senden des Stop-Timers: {e}")
 
     def create_timer_table(self):
         self.timer_table = Gtk.Grid()
@@ -341,6 +393,23 @@ class AdminWindow(Gtk.Window):
             self.update_timer_id = GLib.timeout_add_seconds(1, lambda: self.update_player_window() or False)
         return False
 
+    def start_blinds_update(self):
+        # Sende initial die Blind-Daten und wiederhole das Senden z. B. alle 5 Sekunden
+        GLib.timeout_add_seconds(1, self.update_blinds)
+
+    def start_blinds_update_table(self):
+        # Sende initial die Blind-Daten und wiederhole das Senden z. B. alle 5 Sekunden
+        GLib.timeout_add_seconds(1, self.update_blinds_table)
+
+    def update_blinds(self):
+        # Hier werden die aktuellen Blind-Daten an den Server gesendet
+        asyncio.run_coroutine_threadsafe(
+            self.send_update_blinds(BlindData.small_blind, BlindData.big_blind),
+            self.poker_interface.loop
+        )
+        return True  # Damit der Timeout-Callback weiterläuft
+
+
     def start_admin_timer(self):
         GLib.timeout_add_seconds(1, self.update_admin_timer)
 
@@ -383,23 +452,24 @@ class AdminWindow(Gtk.Window):
 
     def update_game_time(self):
         from data.game_time_data import GameTimeData
+        # Nur hochzählen, wenn der Timer wirklich läuft:
         if GameTimeData.is_running:
             GameTimeData.second += 1
             if GameTimeData.second >= 60:
                 GameTimeData.second = 0
                 GameTimeData.minute += 1
 
-        # Aktualisiere den Wert in der Spielzeit-Tabelle:
-        new_game_time = f"{GameTimeData.minute:02}:{GameTimeData.second:02}"
-        # Hier wird das Label aus dem Dictionary aktualisiert:
+        # Wähle das Symbol: ► wenn aktiv, ‖ wenn pausiert
+        status_symbol = "►" if GameTimeData.is_running else "‖"
+        new_game_time = f"{status_symbol} {GameTimeData.minute:02}:{GameTimeData.second:02}"
         self.game_time_labels["Spielzeit"].set_text(new_game_time)
 
-        # Sende das Update an den Server, etc.
         asyncio.run_coroutine_threadsafe(
             self.send_update_game_time(GameTimeData.minute, GameTimeData.second),
             self.poker_interface.loop
         )
         return True
+
 
 
     async def send_update_game_time(self, minute, second):
@@ -409,7 +479,8 @@ class AdminWindow(Gtk.Window):
         message = {
             "command": "update_game_time",
             "game_time_minute": minute,
-            "game_time_second": second
+            "game_time_second": second,
+            "is_running": GameTimeData.is_running
         }
         try:
             async with websockets.connect(uri) as websocket:
@@ -419,10 +490,15 @@ class AdminWindow(Gtk.Window):
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         print(f"Bestätigte Werte - Small Blind: {small_blind}, Big Blind: {big_blind}")
-        blind_data.small_blind = minute
-        blind_data.big_blind.second = second
+        from data.blind_data import BlindData  # Sicherstellen, dass BlindData importiert ist
+        BlindData.small_blind = small_blind
+        BlindData.big_blind = big_blind
+        # Sende die neuen Blind-Daten direkt an den Server
+        asyncio.run_coroutine_threadsafe(
+             self.send_update_blinds(small_blind, big_blind),
+             self.poker_interface.loop
+        )
     
-
     def on_timer_values_confirmed(self, minute, second):
         print(f"Bestätigte Timer-Werte - Minute: {minute}, Sekunde: {second}")
         TimerData.minute = minute
@@ -434,16 +510,18 @@ class AdminWindow(Gtk.Window):
     async def send_update_blinds(self, small_blind, big_blind):
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
+        message = {
+             "command": "update_blinds",
+             "small_blind": small_blind,
+             "big_blind": big_blind
+        }
         try:
-            async with websockets.connect(uri) as websocket:
-                message = {
-                    "command": "update_blinds",
-                    "small_blind": small_blind,
-                    "big_blind": big_blind
-                }
-                await websocket.send(json.dumps(message))
+             async with websockets.connect(uri) as websocket:
+                 await websocket.send(json.dumps(message))
+                 print("Blind update sent.")
         except Exception as e:
-            print(f"⚠ Fehler beim Senden der Blinds: {e}")
+             print(f"Fehler beim Senden der Blinds: {e}")
+
 
     async def send_update_timer(self, minute, second, is_running):
         server_ip, server_port = self.poker_interface.server_address
@@ -461,13 +539,17 @@ class AdminWindow(Gtk.Window):
             print(f"⚠ Fehler beim Senden des Timers: {e}")
 
     def update_blinds_table(self):
-        smallBlind = blind_data.small_blind if blind_data.small_blind is not None else 0
-        bigBlind = blind_data.big_blind if blind_data.big_blind is not None else 0
-        
-        if "Small Blind" in self.timer_labels:
-            self.timer_labels["Small Blind"].set_text(smallBlind)
-        if "Big Blind" in self.timer_labels:
-            self.timer_labels["Big Blind"].set_text(bigBlind)
+        # Hole die aktuellen Werte – falls None, setze einen Standardwert
+        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "n.V."
+        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "n.V."
+        # Aktualisiere die Labels, die du beim Erstellen der Blinds-Tabelle gespeichert hast
+        if "Small Blind" in self.blind_labels:
+            self.blind_labels["Small Blind"].set_text(small_blind_value)
+        if "Big Blind" in self.blind_labels:
+            self.blind_labels["Big Blind"].set_text(big_blind_value)
+        return True  # Wichtig, damit der Timer weiterläuft
+
+
 
     def update_timer_table(self):
         set_minute = TimerData.start_minute if TimerData.start_minute is not None else 0

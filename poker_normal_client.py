@@ -78,7 +78,7 @@ class PokerClient(PokerInterface):
                 await asyncio.sleep(5)
 
     def update_display(self, data):
-        # Nutze den "or"-Operator, um auch den Fall abzudecken, dass der Wert None ist.
+        # Blinds und Timer (Nächste Blinderhöhung) aktualisieren
         small_blind = data.get("small_blind") or "n.V."
         big_blind = data.get("big_blind") or "n.V."
         try:
@@ -98,6 +98,16 @@ class PokerClient(PokerInterface):
             if "Nächste Blinderhöhung" in self.left_labels:
                 new_text = f"{status_text} {minute:02}:{second:02}"
                 self.left_labels["Nächste Blinderhöhung"].set_text(new_text)
+
+        # ★ Hier Spielzeit aktualisieren:
+        if "game_time_minute" in data and "game_time_second" in data:
+            try:
+                from data.game_time_data import GameTimeData
+                GameTimeData.minute = int(data.get("game_time_minute", 0))
+                GameTimeData.second = int(data.get("game_time_second", 0))
+            except Exception as e:
+                print("Fehler bei der Umwandlung der Spielzeit:", e)
+
 
 
 
