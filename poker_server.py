@@ -114,11 +114,33 @@ async def handle_client(websocket):
                     BlindData.small_blind = data["small_blind"]
                     BlindData.big_blind = data["big_blind"]
                 elif data["command"] == "update_timer":
-                    TimerData.minute = data["minute"]
-                    TimerData.second = data["second"]
-                    TimerData.start_minute = data["minute"]
-                    TimerData.start_second = data["second"]
-                    TimerData.is_running = data["is_running"]
+                    if data["is_running"]:
+                        if TimerData.is_paused:
+                            # Timer wurde pausiert und jetzt nur fortgesetzt – eingestellte Zeit NICHT ändern
+                            TimerData.is_running = True
+                            TimerData.is_paused = False
+                            TimerData.minute = data["minute"]
+                            TimerData.second = data["second"]
+                            # Eingestellte Zeit (start_minute/start_second) NICHT überschreiben!
+                        else:
+                            # Timer wird neu gestartet – eingestellte Zeit aktualisieren
+                            TimerData.is_running = True
+                            TimerData.is_paused = False
+                            TimerData.minute = data["minute"]
+                            TimerData.second = data["second"]
+                            TimerData.start_minute = data["minute"]
+                            TimerData.start_second = data["second"]
+                    else:
+                        if TimerData.is_running:
+                            # Timer wurde gerade pausiert – keine Zeit überschreiben
+                            TimerData.is_running = False
+                            TimerData.is_paused = True
+                        else:
+                            # Timer explizit gestoppt (is_running=False, is_paused=False)
+                            TimerData.is_running = False
+                            TimerData.is_paused = False
+                            TimerData.minute = TimerData.start_minute
+                            TimerData.second = TimerData.start_second
                 elif data["command"] == "update_game_time":
                     GameTimeData.minute = data["game_time_minute"]
                     GameTimeData.second = data["game_time_second"]

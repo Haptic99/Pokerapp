@@ -129,7 +129,6 @@ class TimerController:
         self.send_server_update(minute, second, True)
 
     def pause_timer(self):
-        print("Pause Timer wurde aktiviert")
         
         """Pausiert den Timer."""
         self.is_running = False
@@ -138,29 +137,25 @@ class TimerController:
         minute = 0
         second = 0
         
+        # Nur den Status ändern, keine Aktualisierung der Werte
         if self.timer_type == "blind_timer":
             TimerData.is_running = False
             TimerData.is_paused = True
-            
-            # UI-Status für pause aktualisieren
-            minute = TimerData.minute if TimerData.minute is not None else "-"
-            second = TimerData.second if TimerData.second is not None else "-"
+            minute = TimerData.minute
+            second = TimerData.second
         else:  # game_time
             GameTimeData.is_running = False
             GameTimeData.is_paused = True
-            
-            # UI-Status für pause aktualisieren
-            minute = GameTimeData.minute if GameTimeData.minute is not None else "-"
-            second = GameTimeData.second if GameTimeData.second is not None else "-"
+            minute = GameTimeData.minute
+            second = GameTimeData.second
         
-        # UI aktualisieren
+        # UI aktualisieren (nur Buttons etc.)
         self.update_ui_for_paused_timer()
         
-        # Server-Update senden
+        # Server-Update senden mit den aktuellen Timer-Werten, ohne Neusetzen
         self.send_server_update(minute, second, False)
 
     def stop_timer(self):
-        print("Stop Timer wurde aktiviert")
         """Stoppt den Timer vollständig und setzt ihn zurück."""
         self.is_running = False
         self.is_paused = False
