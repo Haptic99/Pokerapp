@@ -2,11 +2,13 @@ import asyncio
 import websockets
 import json
 import socket
+import time
 from zeroconf import Zeroconf, ServiceInfo
 from data.timer_data import TimerData  # Timer-Daten
 from data.blind_data import BlindData  # Blind-Daten
 from data.game_time_data import GameTimeData  # Spielzeit-Daten
-from data.round_data import RoundData 
+from data.round_data import RoundData
+from data.chip_data import ChipData 
 
 # Lokale IP-Adresse ermitteln
 hostname = socket.gethostname()
@@ -14,7 +16,7 @@ local_ip = socket.gethostbyname(hostname)
 
 # Zeroconf-Dienstinformationen
 service_type = "_poker._tcp.local."
-service_name = "PokerServer._poker._tcp.local."
+service_name = f"PokerServer_{int(time.time())}._poker._tcp.local."
 port = 8765  # Port, auf dem der WebSocket-Server läuft
 
 info = ServiceInfo(
@@ -146,6 +148,12 @@ async def handle_client(websocket):
                     GameTimeData.minute = data["game_time_minute"]
                     GameTimeData.second = data["game_time_second"]
                     GameTimeData.is_running = data["is_running"]
+                elif data["command"] == "update_chip_values":
+                    # Update the chip values in the ChipData class
+                    for chip_file, chf_value in data.get("chip_values", {}).items():
+                        if chip_file in ChipData.chf_values:
+                            ChipData.chf_values[chip_file] = chf_value
+                    print("Chip values updated.")
 
     except websockets.exceptions.ConnectionClosed:
         print("❌ Client hat die Verbindung getrennt.")
@@ -194,6 +202,7 @@ async def broadcast_status():
         "game_time_running": GameTimeData.is_running,
         "players": connected_players,
         "rounds_count": RoundData.count,
+        "chip_values": ChipData.chf_values,
     }
     
     # Eine Kopie des clients-Sets erstellen, um sicher über die ursprünglichen Clients zu iterieren

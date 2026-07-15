@@ -14,6 +14,7 @@ from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
 from windows.admin_window import AdminWindow
 from windows.poker_hands_window import PokerHandsWindow
+from windows.chip_value_window import ChipValueWindow  # Import des normalen ChipValueWindow
 from utils.websocket_utils import WebSocketClient
 
 class PokerInterface(Gtk.Window):
@@ -153,9 +154,9 @@ class PokerInterface(Gtk.Window):
         full_path = os.path.join(os.path.dirname(__file__), "../images", image_path)
         if os.path.exists(full_path):
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 800, 480, False)
-            background = Gtk.Image.new_from_pixbuf(pixbuf)
-            self.overlay.add(background)
-            self.overlay.set_overlay_pass_through(background, True)
+            background_image = Gtk.Image.new_from_pixbuf(pixbuf)
+            self.overlay.add(background_image)
+            self.overlay.set_overlay_pass_through(background_image, True)
 
     def disable_buttons(self):
         """Deaktiviert alle Buttons im Fixed-Container."""
@@ -252,7 +253,12 @@ class PokerInterface(Gtk.Window):
             print(f"Fehler beim Senden der Leave-Nachricht: {e}")
 
     def button_chipwerte_click(self, widget):
-        print("Chipwerte-Button geklickt.")
+        """Öffnet das Fenster für die Chipwerte (nur Anzeige, keine Bearbeitung)."""
+        # Hier wurde die Methode geändert, um für alle Benutzer das gleiche Fenster zu öffnen (is_admin=False)
+        chip_window = ChipValueWindow(self, is_admin=False)
+        if self.is_fullscreen_mode:
+            chip_window.fullscreen()
+        chip_window.show_all()
 
     def button_poker_hands_click(self, widget):
         self.open_poker_hands_window()
@@ -396,4 +402,3 @@ class PokerInterface(Gtk.Window):
         else:
             self.fullscreen()
             self.is_fullscreen_mode = True
-

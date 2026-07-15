@@ -16,6 +16,7 @@ from data.game_time_data import GameTimeData
 from utils.websocket_utils import WebSocketClient
 from utils.display_utils import update_client_display
 from windows.round_management_window import RoundManagementWindow
+from windows.chip_value_admin_window import ChipValueAdminWindow
 
 
 class AdminWindow(Gtk.Window):
@@ -142,6 +143,15 @@ class AdminWindow(Gtk.Window):
         player_position_button.connect("leave-notify-event", self.on_leave)
         player_position_button.get_style_context().add_class("button-custom")
         self.fixed.put(player_position_button, 605, 20)
+        
+        # NEU: "Chipwerte anpassen" Button
+        chip_value_admin_button = Gtk.Button(label="Chipwerte anpassen")
+        chip_value_admin_button.set_size_request(165, 40)
+        chip_value_admin_button.connect("clicked", self.open_chip_value_admin_window)
+        chip_value_admin_button.connect("enter-notify-event", self.on_hover)
+        chip_value_admin_button.connect("leave-notify-event", self.on_leave)
+        chip_value_admin_button.get_style_context().add_class("button-custom")
+        self.fixed.put(chip_value_admin_button, 605, 80)  # Unter Spielerplatzierung
 
         # Tabelle für Blinds erstellen
         self.create_blinds_table()
@@ -161,7 +171,14 @@ class AdminWindow(Gtk.Window):
         back_button.connect("clicked", self.on_back_button_click)
         back_button.get_style_context().add_class("button-custom")
         self.fixed.put(back_button, 658, 416)
-
+        
+    # NEUE METHODE: Chip Value Admin-Fenster öffnen
+    def open_chip_value_admin_window(self, widget):
+        """Öffnet das Chipwerte-Admin-Fenster."""
+        chip_value_admin_window = ChipValueAdminWindow(self)
+        if self.is_fullscreen_mode:
+            chip_value_admin_window.fullscreen()
+        chip_value_admin_window.show_all()
 
     def create_rounds_table(self):
         from data.round_data import RoundData
@@ -233,7 +250,7 @@ class AdminWindow(Gtk.Window):
         total_time_window.show_all()
 
     def create_blinds_table(self):
-        # (Unverändert – siehe ursprünglichen Code)
+        # (Rest der Methode wie im Original)
         self.blinds_table = Gtk.Grid()
         self.blinds_table.set_row_spacing(5)
         self.blinds_table.set_column_spacing(10)
@@ -277,6 +294,7 @@ class AdminWindow(Gtk.Window):
         self.fixed.put(self.blinds_table, 180, 6)
 
     def create_game_time_table(self):
+        # (Rest der Methode wie im Original)
         from data.game_time_data import GameTimeData
         self.game_time_table = Gtk.Grid()
         self.game_time_table.set_row_spacing(5)
@@ -329,6 +347,7 @@ class AdminWindow(Gtk.Window):
 
 
     def create_timer_table(self):
+        # (Rest der Methode wie im Original)
         self.timer_table = Gtk.Grid()
         self.timer_table.set_row_spacing(5)
         self.timer_table.set_column_spacing(10)
@@ -375,6 +394,7 @@ class AdminWindow(Gtk.Window):
 
 
     def open_player_position_window(self, widget):
+        # (Rest der Methode wie im Original)
         """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten vom Server."""
         if hasattr(self, "player_window") and self.player_window:
             self.player_window.present()
@@ -387,6 +407,7 @@ class AdminWindow(Gtk.Window):
 
 
     def on_player_window_closed(self, widget):
+        # (Rest der Methode wie im Original)
         print("Spielerplatzierungsfenster geschlossen.")
         self.player_window = None
         if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
@@ -408,16 +429,19 @@ class AdminWindow(Gtk.Window):
 
 
     def open_blind_adjustment_window(self, widget):
+        # (Rest der Methode wie im Original)
         blind_window = BlindAdjustmentWindow(self, self.on_blind_values_confirmed)
         blind_window.show_all()
 
 
     def open_timer_setting_window(self, widget):
+        # (Rest der Methode wie im Original)
         timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
         timer_window.show_all()
 
 
     def update_player_window(self):
+        # (Rest der Methode wie im Original)
         async def fetch_players():
             try:
                 server_ip, server_port = self.poker_interface.server_address
@@ -447,6 +471,7 @@ class AdminWindow(Gtk.Window):
 
 
     def update_blinds(self):
+        # (Rest der Methode wie im Original)
         # Hier werden die aktuellen Blind-Daten an den Server gesendet
         asyncio.run_coroutine_threadsafe(
             self.send_update_blinds(BlindData.small_blind, BlindData.big_blind),
@@ -455,6 +480,7 @@ class AdminWindow(Gtk.Window):
         return True  # Damit der Timeout-Callback weiterläuft
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
+        # (Rest der Methode wie im Original)
         from data.blind_data import BlindData  # Sicherstellen, dass BlindData importiert ist
         BlindData.small_blind = small_blind
         BlindData.big_blind = big_blind
@@ -465,6 +491,7 @@ class AdminWindow(Gtk.Window):
         )
     
     def on_timer_values_confirmed(self, minute, second):
+        # (Rest der Methode wie im Original)
         TimerData.minute = minute
         TimerData.second = second
         TimerData.start_minute = minute
@@ -477,6 +504,7 @@ class AdminWindow(Gtk.Window):
         )
 
     async def send_update_blinds(self, small_blind, big_blind):
+        # (Rest der Methode wie im Original)
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         message = {
@@ -493,6 +521,7 @@ class AdminWindow(Gtk.Window):
 
 
     async def send_update_timer(self, minute, second, is_running):
+        # (Rest der Methode wie im Original)
         server_ip, server_port = self.poker_interface.server_address
         uri = f"ws://{server_ip}:{server_port}"
         try:
@@ -508,6 +537,7 @@ class AdminWindow(Gtk.Window):
             print(f"⚠ Fehler beim Senden des Timers: {e}")
 
     def update_blinds_table(self):
+        # (Rest der Methode wie im Original)
         # Hole die aktuellen Werte – falls None, setze einen Standardwert
         small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
         big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
@@ -520,25 +550,30 @@ class AdminWindow(Gtk.Window):
 
 
     def on_back_button_click(self, widget):
+        # (Rest der Methode wie im Original)
         self.close()
 
     def on_hover(self, widget, event):
+        # (Rest der Methode wie im Original)
         widget.get_style_context().add_class("hovered")
         if hasattr(self, 'hover_timer') and self.hover_timer:
             GLib.source_remove(self.hover_timer)
         self.hover_timer = GLib.timeout_add(500, self.remove_hover_effect, widget)
 
     def on_leave(self, widget, event):
+        # (Rest der Methode wie im Original)
         if hasattr(self, 'hover_timer') and self.hover_timer:
             GLib.source_remove(self.hover_timer)
         self.hover_timer = GLib.timeout_add(200, self.remove_hover_effect, widget)
 
     def remove_hover_effect(self, widget):
+        # (Rest der Methode wie im Original)
         widget.get_style_context().remove_class("hovered")
         self.hover_timer = None
         return False
 
     def on_key_press(self, widget, event):
+        # (Rest der Methode wie im Original)
         if event.keyval == Gdk.KEY_Escape:
             if self.is_fullscreen_mode:
                 self.unfullscreen()
@@ -549,6 +584,7 @@ class AdminWindow(Gtk.Window):
             self.toggle_fullscreen()
 
     def toggle_fullscreen(self):
+        # (Rest der Methode wie im Original)
         if self.is_fullscreen_mode:
             self.unfullscreen()
             self.set_default_size(800, 480)

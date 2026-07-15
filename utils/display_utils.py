@@ -2,6 +2,7 @@ from utils.helpers import format_timer_with_status
 from data.timer_data import TimerData
 from data.game_time_data import GameTimeData
 from data.round_data import RoundData
+from data.chip_data import ChipData
 
 def update_client_display(instance, data):
     # Aktualisiere die Timer-Daten anhand der vom Server gesendeten Statuswerte
