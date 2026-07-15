@@ -1,30 +1,49 @@
 import asyncio
 import websockets
 import json
+import threading
 import gi
+
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 from windows.poker_interface import PokerInterface  # Nutzt das gleiche Interface
 
 class PokerClient(PokerInterface):
     def __init__(self):
-        super().__init__()
+        super().__init__(is_admin=False)  # ✅ Client ist KEIN Admin
 
         # Entferne Admin-Button, falls vorhanden
-        if hasattr(self, "fixed"):
-            self.fixed.remove(self.admin_button)
+        if hasattr(self, "fixed") and hasattr(self, "administration_button"):
+            self.fixed.remove(self.administration_button)
 
-        # Starte den Netzwerk-Listener
-        asyncio.create_task(self.listen_for_updates())
+        # Starte den Netzwerk-Listener in eigenem Thread
+        self.start_async_loop()
+
+    def start_async_loop(self):
+        """Startet den asyncio-Eventloop in einem separaten Thread."""
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.run_async_loop, daemon=True).start()
+        asyncio.run_coroutine_threadsafe(self.listen_for_updates(), self.loop)
+
+    def run_async_loop(self):
+        """Führt den asyncio-Eventloop aus."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
 
     async def listen_for_updates(self):
         """Empfängt Daten vom Server und aktualisiert das Interface."""
-        uri = "ws://SERVER_IP:8765"  # Ersetze SERVER_IP mit der echten IP
-        async with websockets.connect(uri) as websocket:
-            await websocket.send(json.dumps({"command": "get_status"}))
-            async for message in websocket:
-                data = json.loads(message)
-                self.update_display(data)
+        uri = "ws://192.168.1.65:8765"  # Server-IP anpassen
+
+        while True:
+            try:
+                async with websockets.connect(uri) as websocket:
+                    await websocket.send(json.dumps({"command": "get_status"}))
+                    async for message in websocket:
+                        data = json.loads(message)
+                        GLib.idle_add(self.update_display, data)
+            except Exception as e:
+                print(f"⚠ Verbindung zum Server fehlgeschlagen: {e}")
+                await asyncio.sleep(5)  # 5 Sekunden warten, dann erneut versuchen
 
     def update_display(self, data):
         """Aktualisiert die Anzeige basierend auf den Server-Daten."""
@@ -34,8 +53,14 @@ class PokerClient(PokerInterface):
         second = data.get("second", 0)
         status_text = "►" if data.get("is_running", False) else "‖"
 
-        if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-            self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+        # Aktualisiere Blinds & Timer im Client
+        if hasattr(self, "left_labels"):
+            if "Small Blind" in self.left_labels:
+                self.left_labels["Small Blind"].set_text(f"{small_blind}")
+            if "Big Blind" in self.left_labels:
+                self.left_labels["Big Blind"].set_text(f"{big_blind}")
+            if "Nächste Blinderhöhung" in self.left_labels:
+                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
 
 if __name__ == "__main__":
     client = PokerClient()

@@ -1,23 +1,26 @@
 import gi
+import asyncio
+import websockets
+import json
 import os
+
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
 from utils.helpers import load_css, set_background_image
-from utils.resources import get_image_path, get_style_path
-from windows.poker_hands_window import PokerHandsWindow
-from windows.admin_window import AdminWindow
+from utils.resources import get_image_path
 from data.blind_data import BlindData
-from data.timer_data import TimerData  # Timer-Daten importieren
+from data.timer_data import TimerData
 
 class PokerInterface(Gtk.Window):
-    def __init__(self):
+    def __init__(self, is_admin=False):
         super().__init__(title="Poker Interface")
         self.set_default_size(800, 480)
+        self.is_admin = is_admin  # Admin-Status speichern
 
         # CSS laden
         load_css()
 
-        # Overlay erstellen, um den Dealerchip über das Hintergrundbild zu legen
+        # Overlay erstellen
         self.overlay = Gtk.Overlay()
         self.add(self.overlay)
 
@@ -25,29 +28,23 @@ class PokerInterface(Gtk.Window):
         self.background_image_path = get_image_path("background_start.jpg")
         set_background_image(self.overlay, self.background_image_path)
 
-        # Dealerchip-Bild laden und in der Mitte anzeigen
-        dealerchip_image_path = get_image_path("dealerchip.png")
-        self.add_dealerchip_to_overlay(dealerchip_image_path, 200, 200)
-
         # Erstellen eines Gtk.Fixed-Containers, um die Buttons manuell zu positionieren
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
 
-        # Buttons erstellen und platzieren
+        # Buttons erstellen
         self.create_buttons()
 
         # Tabellen erstellen
         self.create_table_left()
         self.create_table_right()
 
-        # Variable für Vollbildmodus
-        self.is_fullscreen_mode = False
-
-        # Keybindings für Vollbildmodus
-        self.connect("key-press-event", self.on_key_press)
-
         # Timer starten
         self.start_timer()
+
+        # Starte WebSocket-Client, wenn kein Admin
+        if not self.is_admin:
+            GLib.idle_add(asyncio.create_task, self.listen_for_updates())
 
     def pause_timer(self):
         """Pausiert den Timer und aktualisiert alle Bildschirme."""
@@ -56,9 +53,8 @@ class PokerInterface(Gtk.Window):
         self.update_all_timer_displays()  # Poker-Interface aktualisieren
 
         # Falls das Admin-Window existiert, ebenfalls aktualisieren
-        if hasattr(self, "admin_window"):
-             self.admin_window.update_all_timer_displays()
-
+        if self.admin_window:
+            self.admin_window.update_all_timer_displays()
 
     def update_all_timer_displays(self):
         """Aktualisiert den Timer-Status auf allen Bildschirmen."""
@@ -68,14 +64,12 @@ class PokerInterface(Gtk.Window):
 
         # Timer im Poker-Interface aktualisieren
         if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-             self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+            self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
 
     def refresh_blinds(self):
         small_blind = BlindData.small_blind if BlindData.small_blind else "n.V."
         big_blind = BlindData.big_blind if BlindData.big_blind else "n.V."
         self.update_blinds_in_table(small_blind, big_blind)
-
-
 
     def add_dealerchip_to_overlay(self, image_path, width, height):
         """Fügt den Dealerchip über dem Hintergrund in der Mitte hinzu."""
@@ -95,26 +89,25 @@ class PokerInterface(Gtk.Window):
 
     def create_buttons(self):
         """Erstellt und positioniert die Hauptbuttons."""
-        # Chipwerte-Button
         chipwerte_button = Gtk.Button(label="Chipwerte")
         chipwerte_button.set_size_request(100, 40)
         chipwerte_button.connect("clicked", self.button_chipwerte_click)
         chipwerte_button.get_style_context().add_class("button-custom")
         self.fixed.put(chipwerte_button, 15, 416)
 
-        # Poker Hands-Button
         poker_hands_button = Gtk.Button(label="Poker Hands")
         poker_hands_button.set_size_request(100, 40)
         poker_hands_button.connect("clicked", self.button_poker_hands_click)
         poker_hands_button.get_style_context().add_class("button-custom")
         self.fixed.put(poker_hands_button, 150, 416)
 
-        # Administration-Button
-        administration_button = Gtk.Button(label="Administration")
-        administration_button.set_size_request(100, 40)
-        administration_button.connect("clicked", self.button_administration_click)
-        administration_button.get_style_context().add_class("button-custom")
-        self.fixed.put(administration_button, 632, 416)
+        # Admin-Button nur für Admins anzeigen
+        if self.is_admin:
+            self.administration_button = Gtk.Button(label="Administration")
+            self.administration_button.set_size_request(100, 40)
+            self.administration_button.connect("clicked", self.button_administration_click)
+            self.administration_button.get_style_context().add_class("button-custom")
+            self.fixed.put(self.administration_button, 632, 416)
 
     def create_table_left(self):
         """Erstellt eine Tabelle mit 2 Spalten und 4 Reihen auf der linken oberen Seite."""
@@ -255,11 +248,18 @@ class PokerInterface(Gtk.Window):
         poker_window.show_all()
 
     def open_admin_window(self):
-        """Öffnet das Admin-Fenster."""
-        admin_window = AdminWindow(self)
-        if self.is_fullscreen_mode:
-            admin_window.fullscreen()
-        admin_window.show_all()
+            
+        """Öffnet das Admin-Fenster und speichert die Referenz."""
+        if self.admin_window is None:  # Nur ein Admin-Window zulassen
+            self.admin_window = AdminWindow(self)
+            self.admin_window.show_all()
+            self.admin_window.connect("destroy", self.on_admin_window_closed)
+        else:
+            self.admin_window.present()  # Bringt das Fenster nach vorne
+
+    def on_admin_window_closed(self, widget):
+        """Setzt die Referenz auf None, wenn das Admin-Fenster geschlossen wird."""
+        self.admin_window = None
 
     def update_blinds_in_table(self, small_blind, big_blind):
         """Aktualisiert die Blinds in der linken Tabelle."""
@@ -293,5 +293,29 @@ class PokerInterface(Gtk.Window):
                 minute = int(TimerData.minute) if TimerData.minute is not None else 0
                 second = int(TimerData.second) if TimerData.second is not None else 0
                 self.left_labels["Nächste Blinderhöhung"].set_text(f"{minute:02}:{second:02}")
-
         return True  # Timer weiterlaufen lassen
+        
+        
+    async def listen_for_updates(self):
+        """Empfängt Daten vom Server und aktualisiert das Interface."""
+        uri = "ws://192.168.1.65:8765"  # Server-IP hier eintragen
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps({"command": "get_status"}))
+                async for message in websocket:
+                    data = json.loads(message)
+                    self.update_display(data)
+        except Exception as e:
+            print(f"Verbindung zum Server fehlgeschlagen: {e}")
+            
+            
+    def update_display(self, data):
+        """Aktualisiert die Anzeige basierend auf den Server-Daten."""
+        small_blind = data.get("small_blind", "n.V.")
+        big_blind = data.get("big_blind", "n.V.")
+        minute = data.get("minute", 0)
+        second = data.get("second", 0)
+        status_text = "►" if data.get("is_running", False) else "‖"
+
+        if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
+            self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
