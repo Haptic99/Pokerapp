@@ -84,6 +84,19 @@ class TimerSettingWindow(Gtk.Window):
         
 		# Starte den Netzwerk-Listener
 		self.ws_client.start_async_loop()
+		
+		# In deiner __init__-Methode, nachdem die Timer-Felder (z. B. self.label_minute und self.label_second) angelegt wurden:
+		GLib.timeout_add_seconds(1, self.update_timer_fields)
+
+	def update_timer_fields(self):
+		# Nur aktualisieren, wenn der Timer tatsächlich läuft
+		if TimerData.is_running:
+			minute = TimerData.minute if TimerData.minute is not None else 0
+			second = TimerData.second if TimerData.second is not None else 0
+			self.label_minute.set_text(f"{int(minute):02}")
+			self.label_second.set_text(f"{int(second):02}")
+		
+		return True  # Damit der GLib-Callback fortlaufend aufgerufen wird
 
 	def update_display(self, data):
 		# data enthält den Serverstatus, inklusive "timer_running"

@@ -1,6 +1,12 @@
 from utils.helpers import format_timer_with_status
+from data.timer_data import TimerData
 
 def update_client_display(instance, data):
+    # Aktualisiere die Timer-Daten anhand der vom Server gesendeten Statuswerte
+    TimerData.minute = data.get("blind_time_minute", TimerData.minute)
+    TimerData.second = data.get("blind_time_second", TimerData.second)
+    TimerData.is_running = data.get("timer_running", TimerData.is_running)
+    
     # --- Aktualisiere Blinds ---
     small_blind = data.get("small_blind") or "-"
     big_blind = data.get("big_blind") or "-"
