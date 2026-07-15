@@ -1,15 +1,15 @@
 import asyncio
 import websockets
 import json
-from data.timer_data import TimerData  # Timer-Daten
-from data.blind_data import BlindData  # Blind-Daten
+from data.timer_data import TimerData
+from data.blind_data import BlindData
 
 clients = set()
 
-async def handle_client(websocket, path):  # <--- `path` hinzugefügt
+async def handle_client(websocket, path):
     """Verwaltet eine neue Client-Verbindung."""
     clients.add(websocket)
-    print("✅ Neuer Client verbunden.")
+    print(f"✅ Neuer Client verbunden von {websocket.remote_address}")
 
     try:
         async for message in websocket:
@@ -54,11 +54,13 @@ async def broadcast_game_status():
             "second": TimerData.second,
             "is_running": TimerData.is_running
         }
-        await asyncio.wait([client.send(json.dumps(game_status)) for client in clients])
+        await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
+
 
 async def main():
-    server_instance = await websockets.serve(handle_client, "0.0.0.0", 8765)
-    print("Poker-Server läuft auf Port 8765")
-    await server_instance.wait_closed()
+    async with websockets.serve(handle_client, "0.0.0.0", 8765):
+        print("Poker-Server läuft auf Port 8765")
+        await asyncio.Future()  # Lässt den Server unbegrenzt laufen
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())  # Startet den Event-Loop

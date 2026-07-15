@@ -44,6 +44,7 @@ apt-get install -y python3-pip
 
 echo "Installiere websockets-Paket für Python..."
 pip3 install websockets
+pip install --upgrade websockets
 
 echo "Überprüfe Installation von websockets..."
 if python3 -c "import websockets" 2>/dev/null; then
