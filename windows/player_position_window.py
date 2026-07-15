@@ -9,6 +9,9 @@ class PlayerPositionWindow(Gtk.Window):
         super().__init__(title="Spielerplatzierung")
         self.set_default_size(800, 480)
 
+        # Signal zum Schließen des Fensters
+        self.connect("destroy", self.on_close)
+
         # Overlay für den Hintergrund und die Spielerplätze
         self.overlay = Gtk.Overlay()
         self.add(self.overlay)
@@ -25,6 +28,10 @@ class PlayerPositionWindow(Gtk.Window):
 
         # Spielerplätze mit Spielern aktualisieren
         self.update_player_positions(players)
+
+    def on_close(self, widget):
+        """Behandelt das Schließen des Fensters."""
+        print("Spielerplatzierungsfenster wurde geschlossen.")
 
     def set_background_image(self, image_path):
         """Setzt das Hintergrundbild."""
@@ -92,11 +99,11 @@ class PlayerPositionWindow(Gtk.Window):
             self.player_labels.append(player_label)  # Label speichern
 
     def update_player_positions(self, players):
-        """Aktualisiert die Anzeige der Spielerplätze basierend auf der Spielerliste."""
-        for i, player_label in enumerate(self.player_labels):
-            if i < len(players):
-                # Spielername anzeigen
-                player_label.set_text(players[i])
-            else:
-                # Platz ist leer
-                player_label.set_text("Nicht belegt")
+	    """Aktualisiert die Spielerplätze basierend auf der Spielerliste."""
+	    for i, player_label in enumerate(self.player_labels):
+		    if i < len(players):
+			    # Spielername anzeigen
+			    player_label.set_text(players[i])
+		    else:
+			    # Platz ist leer
+			    player_label.set_text("Nicht belegt")

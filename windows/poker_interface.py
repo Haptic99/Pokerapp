@@ -309,6 +309,9 @@ class PokerInterface(Gtk.Window):
                 # Labels speichern
                 self.left_labels[col1] = label2
 
+                # Debug-Ausgabe für Initialisierung
+                print(f"🔧 Initialisiere Label: {col1}")
+
                 # Labels zur Tabelle hinzufügen und CSS-Klasse für Rahmen anwenden
                 frame1 = Gtk.Frame()
                 frame1.add(label1)
@@ -323,6 +326,7 @@ class PokerInterface(Gtk.Window):
 
         # Tabelle links oben positionieren
         self.fixed.put(self.table_left, 15, 15)
+
 
     def create_table_right(self):
         """Erstellt eine Tabelle mit 2 Spalten und 2 Reihen auf der rechten oberen Seite."""
@@ -464,11 +468,25 @@ class PokerInterface(Gtk.Window):
             
     def update_display(self, data):
         """Aktualisiert die Anzeige basierend auf den Server-Daten."""
+        # Fallback-Werte setzen, falls Daten fehlen
         small_blind = data.get("small_blind", "n.V.")
         big_blind = data.get("big_blind", "n.V.")
         minute = data.get("minute", 0)
         second = data.get("second", 0)
         status_text = "►" if data.get("is_running", False) else "‖"
 
-        if hasattr(self, "left_labels") and "Nächste Blinderhöhung" in self.left_labels:
-            self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {minute:02}:{second:02}")
+        # Aktualisiere Small Blind und Big Blind Labels, falls sie existieren
+        if hasattr(self, "left_labels"):
+            if "Small Blind" in self.left_labels:
+                self.left_labels["Small Blind"].set_text(str(small_blind))
+            else:
+                print("⚠ 'Small Blind'-Label existiert nicht.")
+        
+            if "Big Blind" in self.left_labels:
+                self.left_labels["Big Blind"].set_text(str(big_blind))
+            else:
+                print("⚠ 'Big Blind'-Label existiert nicht.")
+        
+            if "Nächste Blinderhöhung" in self.left_labels:
+                self.left_labels["Nächste Blinderhöhung"].set_text(f"{status_text} {int(minute):02}:{int(second):02}")
+

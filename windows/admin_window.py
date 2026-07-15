@@ -19,6 +19,10 @@ class AdminWindow(Gtk.Window):
         self.poker_interface = poker_interface  # Referenz auf das Poker-Interface speichern
         self.set_default_size(800, 480)
 
+        # Spielerplatzierungsfenster-Referenz
+        self.player_window = None
+        self.persistent_websocket = None
+
         # Setze das Admin-Fenster als untergeordnetes Fenster des Poker-Interfaces
         if self.poker_interface:
             self.set_transient_for(self.poker_interface)  
@@ -80,9 +84,8 @@ class AdminWindow(Gtk.Window):
         player_position_button = Gtk.Button(label="Spielerplatzierung")
         player_position_button.set_size_request(165, 40)
         player_position_button.connect("clicked", self.open_player_position_window)
-        player_position_button.get_style_context().add_class("button-custom")
+        self.add(player_position_button)
         self.fixed.put(player_position_button, 30, 220)
-
 
         # Tabelle für Blinds erstellen
         self.create_blinds_table()
@@ -98,12 +101,80 @@ class AdminWindow(Gtk.Window):
         self.fixed.put(back_button, 658, 416)
 
     def open_player_position_window(self, widget):
-        """Öffnet das Fenster für die Spielerplatzierung."""
-        # Beispiel: Spieler aus einer globalen Variable oder Datenbank abrufen
-        players = ["Daniel", "Martina", "John", "Alex", "Sarah", "Chris", "Emma", "Tom"]
+        """Öffnet das Spielerplatzierungsfenster und aktualisiert es mit Live-Daten."""
+        if self.player_window:
+            self.player_window.present()
+            return
 
-        player_window = PlayerPositionWindow(players)
-        player_window.show_all()
+        self.player_window = PlayerPositionWindow([])
+        self.player_window.connect("destroy", self.on_player_window_closed)
+        self.player_window.show_all()
+
+        self.update_player_window()
+
+    def on_player_window_closed(self, widget):
+        """Behandelt das Schließen des Spielerplatzierungsfensters."""
+        print("Spielerplatzierungsfenster geschlossen.")
+        self.player_window = None
+
+        # Entferne den Timer, wenn er noch läuft
+        if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
+            GLib.source_remove(self.update_timer_id)
+            print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
+            self.update_timer_id = None
+
+        # Schließe die WebSocket-Verbindung
+        async def close_websocket():
+            if self.persistent_websocket:
+                try:
+                    await self.persistent_websocket.close()
+                    print("🌐 WebSocket-Verbindung geschlossen.")
+                except Exception as e:
+                    print(f"⚠ Fehler beim Schließen der WebSocket-Verbindung: {e}")
+                finally:
+                    self.persistent_websocket = None
+
+        asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
+
+
+    def update_player_window(self):
+        """Aktualisiert die Spielerplatzierung mit den Live-Daten vom Server."""
+        async def fetch_players():
+            try:
+                server_ip, server_port = self.poker_interface.server_address
+                uri = f"ws://{server_ip}:{server_port}"
+
+                if not self.persistent_websocket:
+                    self.persistent_websocket = await websockets.connect(uri)
+                    print(f"🌐 WebSocket-Verbindung hergestellt: {uri}")
+
+                # Spielerliste vom Server abrufen
+                await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
+                message = await self.persistent_websocket.recv()
+                data = json.loads(message)
+                players = data.get("players", [])
+                print(f"🔄 Spieler erhalten: {players}")
+
+                # Spielerplätze im Fenster aktualisieren
+                GLib.idle_add(self.player_window.update_player_positions, players)
+
+            except Exception as e:
+                print(f"⚠ Fehler beim Abrufen der Spieler: {e}")
+                if self.persistent_websocket:
+                    await self.persistent_websocket.close()
+                    self.persistent_websocket = None
+
+        # Starte den asynchronen Abruf
+        asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
+
+        # Wiederhole das Update alle 5 Sekunden, solange das Fenster offen ist
+        if self.player_window:
+            self.update_timer_id = GLib.timeout_add_seconds(
+                5, lambda: self.update_player_window() or False
+            )
+        return False  # Timer nicht erneut ausführen
+
+
 
 
 

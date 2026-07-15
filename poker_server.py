@@ -31,7 +31,7 @@ print("Registriere den Zeroconf-Service...")
 zeroconf.register_service(info)
 
 clients = set()  # Liste der verbundenen Clients
-connected_players = set()  # Menge der Spielernamen
+connected_players = []  # Liste der Spielernamen (in Reihenfolge des Logins)
 
 
 async def handle_client(websocket):
@@ -46,8 +46,10 @@ async def handle_client(websocket):
             # Spielername wird gesendet
             if data.get("action") == "join":
                 player_name = data.get("name", "Unbekannt")
-                connected_players.add(player_name)
-                print(f"✅ Spieler verbunden: {player_name}")
+                if player_name not in connected_players:
+                    connected_players.append(player_name)
+                    print(f"✅ Spieler hinzugefügt: {player_name}")
+                    await broadcast_player_list()
 
             # Andere Kommandos werden verarbeitet
             if "command" in data:
@@ -76,9 +78,20 @@ async def send_game_status(websocket):
         "big_blind": BlindData.big_blind,
         "minute": TimerData.minute,
         "second": TimerData.second,
-        "is_running": TimerData.is_running
+        "is_running": TimerData.is_running,
+        "players": connected_players  # Aktuelle Spielerliste hinzufügen
     }
     await websocket.send(json.dumps(game_status))
+
+
+async def broadcast_player_list():
+    """Broadcastet die aktuelle Spielerliste an alle verbundenen Clients."""
+    if clients:
+        data = {
+            "players": connected_players  # Liste der Spieler senden
+        }
+        print(f"🔄 Sende aktualisierte Spielerliste: {connected_players}")
+        await asyncio.gather(*[client.send(json.dumps(data)) for client in clients])
 
 
 async def broadcast_game_status():
@@ -89,9 +102,10 @@ async def broadcast_game_status():
             "big_blind": BlindData.big_blind,
             "minute": TimerData.minute,
             "second": TimerData.second,
-            "is_running": TimerData.is_running
+            "is_running": TimerData.is_running,
+            "players": connected_players  # Aktuelle Spielerliste hinzufügen
         }
-        print("Broadcasting game status:", game_status)  # Debug-Ausgabe
+        print("🔄 Sende aktualisierten Spielstatus:", game_status)
         await asyncio.gather(*[client.send(json.dumps(game_status)) for client in clients])
 
 
