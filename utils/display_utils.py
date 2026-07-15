@@ -1,5 +1,6 @@
 from utils.helpers import format_timer_with_status
 from data.timer_data import TimerData
+from data.game_time_data import GameTimeData
 
 def update_client_display(instance, data):
     # Aktualisiere die Timer-Daten anhand der vom Server gesendeten Statuswerte
@@ -10,6 +11,12 @@ def update_client_display(instance, data):
     # Setze konfigurierte Startzeit aus dem Server‑Status
     TimerData.start_minute = data.get("configured_blind_time_minute", TimerData.start_minute)
     TimerData.start_second = data.get("configured_blind_time_second", TimerData.start_second)
+
+    # --- Aktualisiere GameTimeData mit Serverdaten ---
+    if "game_time_minute" in data and "game_time_second" in data:
+        GameTimeData.minute = data.get("game_time_minute", GameTimeData.minute)
+        GameTimeData.second = data.get("game_time_second", GameTimeData.second)
+        GameTimeData.is_running = data.get("game_time_running", GameTimeData.is_running)
 
     # --- Aktualisiere Blinds ---
     small_blind = data.get("small_blind") or "-"
@@ -47,6 +54,32 @@ def update_client_display(instance, data):
             game_time_text = format_timer_with_status(game_minute, game_second, game_running)
             instance.info_labels["Spielzeit"].set_text(game_time_text)
 
+        # --- Aktualisiere Spielzeit im TotalGameTimeWindow ---
+        if hasattr(instance, "label_minute") and hasattr(instance, "label_second"):
+            # Prüfe, ob wir uns im TotalGameTimeWindow befinden
+            if hasattr(instance, "game_timer"):
+                instance.label_minute.set_text(f"{game_minute:02}")
+                instance.label_second.set_text(f"{game_second:02}")
+                
+                # Aktualisiere Buttons basierend auf game_running Status
+                if hasattr(instance, "button_start") and hasattr(instance, "button_pause") and hasattr(instance, "button_stop"):
+                    if game_running:
+                        instance.button_start.set_sensitive(False)
+                        instance.button_pause.set_sensitive(True)
+                        instance.button_stop.set_sensitive(True)
+                        # Eingabefelder deaktivieren
+                        if hasattr(instance, "disable_input_fields"):
+                            instance.disable_input_fields()
+                    else:
+                        # Nur aktivieren, wenn der Timer nicht pausiert ist
+                        if not GameTimeData.is_paused:
+                            instance.button_start.set_sensitive(True)
+                            instance.button_pause.set_sensitive(False)
+                            instance.button_stop.set_sensitive(False)
+                            # Eingabefelder aktivieren
+                            if hasattr(instance, "enable_input_fields"):
+                                instance.enable_input_fields()
+
     # --- Aktualisiere konfigurierten Timer (Eingestellte Zeit) ---
     if "configured_blind_time_minute" in data and "configured_blind_time_second" in data:
         configured_minute_raw = data.get("configured_blind_time_minute")
@@ -76,10 +109,12 @@ def update_client_display(instance, data):
 
     current_time_str = format_timer_with_status(current_minute, current_second, timer_running)
 
+    # Aktualisiere Timer-Felder im Blind-Timer-Fenster
     if hasattr(instance, "label_minute") and hasattr(instance, "label_second"):
-        instance.label_minute.set_text(f"{current_minute:02}")
-        instance.label_second.set_text(f"{current_second:02}")
+        # Prüfe, ob wir uns im TimerSettingWindow befinden (hat keinen game_timer)
+        if not hasattr(instance, "game_timer"):
+            instance.label_minute.set_text(f"{current_minute:02}")
+            instance.label_second.set_text(f"{current_second:02}")
 
     if hasattr(instance, "timer_labels") and "Momentane Zeit" in instance.timer_labels:
         instance.timer_labels["Momentane Zeit"].set_text(current_time_str)
-

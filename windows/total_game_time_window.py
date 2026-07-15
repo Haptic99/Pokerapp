@@ -8,6 +8,8 @@ from utils.resources import get_image_path
 from data.game_time_data import GameTimeData
 from data.timer_data import TimerData
 from utils.timer_controller import create_game_time_timer
+from utils.websocket_utils import WebSocketClient
+from utils.display_utils import update_client_display
 
 class TotalGameTimeWindow(Gtk.Window):
     def __init__(self, parent, confirm_callback):
@@ -32,6 +34,9 @@ class TotalGameTimeWindow(Gtk.Window):
         # Hauptcontainer erstellen
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
+
+        # Liste für Numpad-Buttons
+        self.numpad_buttons = []
 
         # Zellen für Minuten und Sekunden erstellen
         self.create_timer_cells()
@@ -68,9 +73,77 @@ class TotalGameTimeWindow(Gtk.Window):
         )
     
         # Buttons mit dem Controller verbinden
-        self.button_start.connect("clicked", lambda _: self.game_timer.start_timer())
+        self.button_start.connect("clicked", self.on_start_button_clicked)
         self.button_pause.connect("clicked", lambda _: self.game_timer.pause_timer())
-        self.button_stop.connect("clicked", lambda _: self.on_stop_button_click)
+        self.button_stop.connect("clicked", self.on_stop_button_clicked)
+
+        # WebSocket-Client initialisieren (findet Server automatisch via Zeroconf)
+        self.ws_client = WebSocketClient(update_display_callback=self.update_display)
+        
+        # Starte den Netzwerk-Listener
+        self.ws_client.start_async_loop()
+
+        # Aktualisiere die Anzeige jede Sekunde
+        GLib.timeout_add_seconds(1, self.update_timer_display)
+
+        # Wenn Timer bereits läuft, UI entsprechend anpassen
+        if GameTimeData.is_running:
+            self.disable_input_fields()
+            for btn in self.numpad_buttons:
+                btn.set_sensitive(False)
+            self.button_start.set_sensitive(False)
+            self.button_pause.set_sensitive(True)
+            self.button_stop.set_sensitive(True)
+
+    def update_display(self, data):
+        """
+        Aktualisiert die Anzeige basierend auf Serverdaten
+        """
+        update_client_display(self, data)
+        
+        # Aktualisiere die UI basierend auf dem Spielzeit-Status vom Server
+        game_running = data.get("game_time_running", False)
+        
+        if game_running:
+            # Timer läuft
+            self.disable_input_fields()
+            for btn in self.numpad_buttons:
+                btn.set_sensitive(False)
+            self.button_start.set_sensitive(False)
+            self.button_pause.set_sensitive(True)
+            self.button_stop.set_sensitive(True)
+        elif GameTimeData.is_paused:
+            # Timer ist pausiert
+            self.disable_input_fields()
+            for btn in self.numpad_buttons:
+                btn.set_sensitive(False)
+            self.button_start.set_sensitive(True)
+            self.button_pause.set_sensitive(False)
+            self.button_stop.set_sensitive(True)
+        else:
+            # Timer ist gestoppt
+            self.enable_input_fields()
+            for btn in self.numpad_buttons:
+                btn.set_sensitive(True)
+            self.button_start.set_sensitive(True)
+            self.button_pause.set_sensitive(False)
+            self.button_stop.set_sensitive(False)
+
+    def update_timer_display(self):
+        """
+        Aktualisiert die Anzeige des Timers basierend auf den aktuellen GameTimeData-Werten.
+        """
+        if GameTimeData.is_running:
+            minute = GameTimeData.minute if GameTimeData.minute is not None else 0
+            second = GameTimeData.second if GameTimeData.second is not None else 0
+            
+            # Setze die Labels, aber nur wenn sie existieren und ein Label enthaltens
+            if hasattr(self, "label_minute"):
+                self.label_minute.set_text(f"{int(minute):02}")
+            if hasattr(self, "label_second"):
+                self.label_second.set_text(f"{int(second):02}")
+        
+        return True  # Damit der GLib-Timeout-Callback fortgesetzt wird
 
     def create_timer_cells(self):
         # Container für die Zeit auf der linken Seite
@@ -83,8 +156,11 @@ class TotalGameTimeWindow(Gtk.Window):
         label_minute_title.get_style_context().add_class("time-title")
         vbox.pack_start(label_minute_title, False, False, 5)
 
+        # Aktuelle Minute aus GameTimeData verwenden oder 0
+        current_minute = GameTimeData.minute if GameTimeData.minute is not None else 0
+        
         # Minuten Wert
-        self.label_minute = Gtk.Label(label="00")
+        self.label_minute = Gtk.Label(label=f"{current_minute:02}")
         self.label_minute.get_style_context().add_class("time-value")
         self.button_minute = Gtk.Button()
         self.button_minute.add(self.label_minute)
@@ -97,8 +173,11 @@ class TotalGameTimeWindow(Gtk.Window):
         label_second_title.get_style_context().add_class("time-title")
         vbox.pack_start(label_second_title, False, False, 5)
 
+        # Aktuelle Sekunde aus GameTimeData verwenden oder 0
+        current_second = GameTimeData.second if GameTimeData.second is not None else 0
+        
         # Sekunden Wert
-        self.label_second = Gtk.Label(label="00")
+        self.label_second = Gtk.Label(label=f"{current_second:02}")
         self.label_second.get_style_context().add_class("time-value")
         self.button_second = Gtk.Button()
         self.button_second.add(self.label_second)
@@ -143,6 +222,7 @@ class TotalGameTimeWindow(Gtk.Window):
             else:
                 button.connect("clicked", self.on_numpad_button_click)
             grid.attach(button, x, y, 1, 1)
+            self.numpad_buttons.append(button)
 
     def create_back_button(self):
         back_button = Gtk.Button(label="Schließen")
@@ -154,7 +234,26 @@ class TotalGameTimeWindow(Gtk.Window):
     def on_back_button_click(self, widget):
         self.close()
 
-    def on_stop_button_click(self, button):
+    def on_start_button_clicked(self, button):
+        # Timer starten mit dem Controller
+        self.game_timer.start_timer()
+        
+        # NEUE FUNKTIONALITÄT: NumPad deaktivieren
+        for btn in self.numpad_buttons:
+            btn.set_sensitive(False)
+        
+        # NEUE FUNKTIONALITÄT: Eingabefelder deaktivieren
+        self.disable_input_fields()
+        
+        # NEUE FUNKTIONALITÄT: Fokus explizit entfernen
+        self.remove_timer_focus()
+        
+        # NEUE FUNKTIONALITÄT: Start deaktivieren, Pause und Stop aktivieren
+        self.button_start.set_sensitive(False)
+        self.button_pause.set_sensitive(True)
+        self.button_stop.set_sensitive(True)
+
+    def on_stop_button_clicked(self, button):
         """
         Erweiterter Stop-Button, der auch den Blinds-Timer zurücksetzt
         """
@@ -175,9 +274,17 @@ class TotalGameTimeWindow(Gtk.Window):
                 self.parent.poker_interface.loop
             )
 
-        # (Optional) Aktualisiere auch die Anzeige im übergeordneten Fenster
-        if hasattr(self.parent, 'update_all_timer_displays'):
-            GLib.idle_add(self.parent.update_all_timer_displays)
+        # NEUE FUNKTIONALITÄT: Aktiviere alle NumPad-Buttons wieder
+        for btn in self.numpad_buttons:
+            btn.set_sensitive(True)
+            
+        # NEUE FUNKTIONALITÄT: Aktiviere die Eingabefelder
+        self.enable_input_fields()
+        
+        # NEUE FUNKTIONALITÄT: Start aktivieren, Pause und Stop deaktivieren
+        self.button_start.set_sensitive(True)
+        self.button_pause.set_sensitive(False)
+        self.button_stop.set_sensitive(False)
 
     def on_numpad_button_click(self, button):
         label_text = button.get_label()
@@ -270,3 +377,6 @@ class TotalGameTimeWindow(Gtk.Window):
 
     def remove_timer_focus(self):
         self.fixed.grab_focus()
+        self.current_time = None
+        self.label_minute.get_style_context().remove_class("time-selected")
+        self.label_second.get_style_context().remove_class("time-selected")

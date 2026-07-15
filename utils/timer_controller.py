@@ -42,62 +42,85 @@ class TimerController:
         self.load_initial_state()
 
     def load_initial_state(self):
-        if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
-            # Hole die Werte – falls nicht gesetzt, wird "-" verwendet
-            minute = TimerData.minute if TimerData.minute is not None else 0
-            second = TimerData.second if TimerData.second is not None else 0
-            # Versuche, den Minutenwert zu konvertieren
-            try:
-                minute_int = int(minute)
-                minute_text = f"{minute_int:02}"
-            except (ValueError, TypeError):
-                minute_text = "-"
-            # Versuche, den Sekundenwert zu konvertieren
-            try:
-                second_int = int(second)
-                second_text = f"{second_int:02}"
-            except (ValueError, TypeError):
-                second_text = "-"
+        """
+        Loads the initial state based on timer type - either from TimerData or GameTimeData
+        """
+        # Logic based on timer type
+        if self.timer_type == "blind_timer":
+            # Load blind timer state from TimerData
+            self.is_running = TimerData.is_running
+            self.is_paused = TimerData.is_paused
+            
+            if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
+                # Get values - use "-" if not set
+                minute = TimerData.minute if TimerData.minute is not None else 0
+                second = TimerData.second if TimerData.second is not None else 0
                 
-            self.ui_elements["minute_label"].set_text(minute_text)
-            self.ui_elements["second_label"].set_text(second_text)
+                # Try to convert minute value
+                try:
+                    minute_int = int(minute)
+                    minute_text = f"{minute_int:02}"
+                except (ValueError, TypeError):
+                    minute_text = "00"
                     
+                # Try to convert second value
+                try:
+                    second_int = int(second)
+                    second_text = f"{second_int:02}"
+                except (ValueError, TypeError):
+                    second_text = "00"
+                    
+                self.ui_elements["minute_label"].set_text(minute_text)
+                self.ui_elements["second_label"].set_text(second_text)
+                
         elif self.timer_type == "game_time":
+            # Load game time state from GameTimeData
             self.is_running = GameTimeData.is_running
             self.is_paused = GameTimeData.is_paused
             
             if self.ui_elements and "minute_label" in self.ui_elements and "second_label" in self.ui_elements:
                 minute = GameTimeData.minute if GameTimeData.minute is not None else 0
                 second = GameTimeData.second if GameTimeData.second is not None else 0
+                
                 try:
                     minute_int = int(minute)
                     minute_text = f"{minute_int:02}"
                 except (ValueError, TypeError):
-                    minute_text = "-"
+                    minute_text = "00"
+                    
                 try:
                     second_int = int(second)
                     second_text = f"{second_int:02}"
                 except (ValueError, TypeError):
-                    second_text = "-"
+                    second_text = "00"
                     
                 self.ui_elements["minute_label"].set_text(minute_text)
                 self.ui_elements["second_label"].set_text(second_text)
-            
-        # server_status ist ein Dictionary, das vom Server kommt
+        
+        # Update button states based on timer status
         try:
-            timer_running = server_status.get("timer_running", False)
-        except NameError:
-            timer_running = False
-            
-        if timer_running:
-            self.button_start.set_sensitive(False)
-            self.button_pause.set_sensitive(True)
-            self.button_stop.set_sensitive(True)
-        else:
-            self.button_start.set_sensitive(True)
-            self.button_pause.set_sensitive(False)
-            self.button_stop.set_sensitive(False)
-
+            if self.timer_type == "blind_timer":
+                timer_running = TimerData.is_running
+            else:
+                timer_running = GameTimeData.is_running
+                
+            if timer_running:
+                if self.button_start:
+                    self.button_start.set_sensitive(False)
+                if self.button_pause:
+                    self.button_pause.set_sensitive(True)
+                if self.button_stop:
+                    self.button_stop.set_sensitive(True)
+            else:
+                if self.button_start:
+                    self.button_start.set_sensitive(True)
+                if self.button_pause:
+                    self.button_pause.set_sensitive(False)
+                if self.button_stop:
+                    self.button_stop.set_sensitive(False)
+                
+        except Exception as e:
+            print(f"Error setting button states: {e}")
 
     def start_timer(self):
         """
@@ -111,18 +134,28 @@ class TimerController:
             minute = int(self.ui_elements["minute_label"].get_text())
             second = int(self.ui_elements["second_label"].get_text())
         
-        # Verify we're not starting a timer at 0:00
-        if minute == 0 and second == 0:
-            print("[ERROR] Cannot start timer at 0:00 - please set a valid time first")
+        # For game time, we can start at 0:00, but not for blind timer
+        if self.timer_type == "blind_timer" and minute == 0 and second == 0:
+            print("[ERROR] Cannot start blind timer at 0:00 - please set a valid time first")
             return
         
         # Update local status
         self.is_running = True
         self.is_paused = False
         
-        # *** NEU ***
-        TimerData.start_minute = minute
-        TimerData.start_second = second
+        # Update appropriate data class based on timer type
+        if self.timer_type == "blind_timer":
+            TimerData.is_running = True
+            TimerData.is_paused = False
+            TimerData.minute = minute
+            TimerData.second = second
+            TimerData.start_minute = minute
+            TimerData.start_second = second
+        else:  # game_time
+            GameTimeData.is_running = True
+            GameTimeData.is_paused = False
+            GameTimeData.minute = minute
+            GameTimeData.second = second
         
         # Update UI
         self.update_ui_for_running_timer()
@@ -131,15 +164,14 @@ class TimerController:
         self.send_server_update(minute, second, True)
 
     def pause_timer(self):
-        
-        """Pausiert den Timer."""
+        """Pauses the timer."""
         self.is_running = False
         self.is_paused = True
         
         minute = 0
         second = 0
         
-        # Nur den Status ändern, keine Aktualisierung der Werte
+        # Update data object status based on timer type
         if self.timer_type == "blind_timer":
             TimerData.is_running = False
             TimerData.is_paused = True
@@ -151,14 +183,14 @@ class TimerController:
             minute = GameTimeData.minute
             second = GameTimeData.second
         
-        # UI aktualisieren (nur Buttons etc.)
+        # Update UI (only buttons etc.)
         self.update_ui_for_paused_timer()
         
-        # Server-Update senden mit den aktuellen Timer-Werten, ohne Neusetzen
+        # Send server update with current timer values
         self.send_server_update(minute, second, False)
 
     def stop_timer(self):
-        """Stoppt den Timer vollständig und setzt ihn zurück."""
+        """Stops the timer completely and resets it."""
         self.is_running = False
         self.is_paused = False
         
@@ -166,11 +198,11 @@ class TimerController:
         second = 0
         
         if self.timer_type == "blind_timer":
-            # Setze auf die ursprünglichen Startwerte zurück
+            # Reset to original start values
             minute = TimerData.start_minute if TimerData.start_minute is not None else 0
             second = TimerData.start_second if TimerData.start_second is not None else 0
             
-            # Wichtig: Stelle sicher, dass minute und second gültige numerische Werte sind
+            # Ensure valid numeric values
             try:
                 minute = int(minute)
                 second = int(second)
@@ -178,13 +210,13 @@ class TimerController:
                 minute = 0
                 second = 0
                 
-            # Setze TimerData Werte
+            # Set TimerData values
             TimerData.minute = minute
             TimerData.second = second
             TimerData.is_running = False
             TimerData.is_paused = False
         else:  # game_time
-            # Setze die Spielzeit auf 0 zurück
+            # Reset game time to 0
             GameTimeData.minute = 0
             GameTimeData.second = 0
             GameTimeData.is_running = False
@@ -193,10 +225,10 @@ class TimerController:
             minute = 0
             second = 0
         
-        # UI aktualisieren
+        # Update UI
         self.update_ui_for_stopped_timer(minute, second)
         
-        # Server-Update senden mit den Stop-Werten
+        # Send server update with the stop values
         self.send_server_update(minute, second, False)
 
     def update_ui_for_running_timer(self):
@@ -233,6 +265,7 @@ class TimerController:
             self.ui_elements["stop_button"].set_sensitive(True)
 
     def update_ui_for_stopped_timer(self, minute, second):
+        """Aktualisiert die UI für einen gestoppten Timer."""
         if not self.ui_elements:
             return
 
@@ -252,9 +285,12 @@ class TimerController:
                 text = str(second)
             self.ui_elements["second_label"].set_text(text)
 
-        self.ui_elements["start_button"].set_sensitive(True)
-        self.ui_elements["pause_button"].set_sensitive(False)
-        self.ui_elements["stop_button"].set_sensitive(False)
+        if "start_button" in self.ui_elements:
+            self.ui_elements["start_button"].set_sensitive(True)
+        if "pause_button" in self.ui_elements:
+            self.ui_elements["pause_button"].set_sensitive(False)
+        if "stop_button" in self.ui_elements:
+            self.ui_elements["stop_button"].set_sensitive(False)
 
     def disable_input_fields(self):
         """Deaktiviert die Eingabefelder für den Timer."""
@@ -283,6 +319,18 @@ class TimerController:
                 asyncio.run_coroutine_threadsafe(
                     self.send_update_game_time(minute, second, is_running),
                     self.parent.parent.poker_interface.loop
+                )
+        # Try using ws_client if available
+        elif hasattr(self.parent, 'ws_client') and hasattr(self.parent.ws_client, 'loop'):
+            if self.timer_type == "blind_timer":
+                asyncio.run_coroutine_threadsafe(
+                    self.parent.ws_client.send_update_timer(minute, second, is_running),
+                    self.parent.ws_client.loop
+                )
+            else:  # game_time
+                asyncio.run_coroutine_threadsafe(
+                    self.parent.ws_client.send_update_game_time(minute, second, is_running),
+                    self.parent.ws_client.loop
                 )
 
     async def send_update_timer(self, minute, second, is_running):
@@ -322,8 +370,22 @@ class TimerController:
     async def send_update_game_time(self, minute, second, is_running):
         """Sendet ein Update für die Spielzeit an den Server."""
         try:
-            server_ip, server_port = self.parent.poker_interface.server_address
+            # Try to get server address from different possible paths
+            server_address = None
+            if hasattr(self.parent, 'poker_interface') and hasattr(self.parent.poker_interface, 'server_address'):
+                server_address = self.parent.poker_interface.server_address
+            elif hasattr(self.parent, 'parent') and hasattr(self.parent.parent, 'poker_interface'):
+                server_address = self.parent.parent.poker_interface.server_address
+            elif hasattr(self.parent, 'ws_client') and hasattr(self.parent.ws_client, 'server_address'):
+                server_address = self.parent.ws_client.server_address
+            
+            if not server_address:
+                print(f"[ERROR] Could not find server address for game time update")
+                return
+                
+            server_ip, server_port = server_address
             uri = f"ws://{server_ip}:{server_port}"
+            
             message = {
                 "command": "update_game_time",
                 "game_time_minute": minute,
