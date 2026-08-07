@@ -53,7 +53,8 @@ class PokerInterface(Gtk.Window):
         self.admin_window = None
 
         # Vollbildmodus-Status (wichtig für Admin-Fenster)
-        self.is_fullscreen_mode = False
+        self.is_fullscreen_mode = True
+        self.fullscreen()
 
         # Key-Press-Event verbinden
         self.connect("key-press-event", self.on_key_press)

@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Poker App
+Exec=/home/pi/Pokerapp/start_poker.sh
+WorkingDirectory=/home/pi/Pokerapp
