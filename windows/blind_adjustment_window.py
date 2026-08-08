@@ -90,23 +90,33 @@ class BlindAdjustmentWindow(Gtk.Window):
             ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
             ('4', 0, 1), ('5', 1, 1), ('6', 2, 1),
             ('7', 0, 2), ('8', 1, 2), ('9', 2, 2),
-            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3)
+            ('.', 0, 3), ('0', 1, 3), ('←', 2, 3),
+            ('C', 0, 4, 3) # Clear-Button über die gesamte Breite
         ]
 
         for item in buttons:
-            label, x, y = item
+            if len(item) == 4:
+                label, x, y, width = item
+            else:
+                label, x, y = item
+                width = 1
+                
             button = Gtk.Button(label=label)
-            button.set_size_request(70, 50)
+            # Berechne Breite basierend auf Spalten-Span
+            btn_width = 70 * width + 5 * (width - 1)
+            button.set_size_request(btn_width, 50)
             button.get_style_context().add_class("numpad-button")
             
             if label == 'C':
                 button.connect("clicked", self.on_numpad_clear)
             elif label == '←':
                 button.connect("clicked", self.on_numpad_backspace)
+            elif label == '.':
+                button.connect("clicked", self.on_numpad_dot)
             else:
                 button.connect("clicked", self.on_numpad_number, label)
                 
-            grid.attach(button, x, y, 1, 1)
+            grid.attach(button, x, y, width, 1)
 
     def create_right_panel(self):
         # Vorschau-Titel
@@ -202,14 +212,23 @@ class BlindAdjustmentWindow(Gtk.Window):
         else:
             self.current_start_blind += digit
             
-        if len(self.current_start_blind) > 4: # Max 9999
-            self.current_start_blind = self.current_start_blind[:4]
+        if len(self.current_start_blind) > 6: # Max 9999.9
+            self.current_start_blind = self.current_start_blind[:6]
             
         self.update_start_blind_display()
         self.regenerate_schedule()
 
+    def on_numpad_dot(self, button):
+        if "." not in self.current_start_blind:
+            if not self.current_start_blind:
+                self.current_start_blind = "0."
+            else:
+                self.current_start_blind += "."
+            self.update_start_blind_display()
+            self.regenerate_schedule()
+
     def on_numpad_clear(self, button):
-        self.current_start_blind = "0"
+        self.current_start_blind = ""
         self.update_start_blind_display()
         self.regenerate_schedule()
 
@@ -217,19 +236,31 @@ class BlindAdjustmentWindow(Gtk.Window):
         if len(self.current_start_blind) > 1:
             self.current_start_blind = self.current_start_blind[:-1]
         else:
-            self.current_start_blind = "0"
+            self.current_start_blind = ""
         self.update_start_blind_display()
         self.regenerate_schedule()
 
     def update_start_blind_display(self):
-        val = int(self.current_start_blind) if self.current_start_blind else 0
-        self.label_start_blind.set_text(f"{val:02}")
+        # Zeige den String exakt so an, wie er getippt wurde (verhindert 00 und behält den Punkt)
+        self.label_start_blind.set_text(self.current_start_blind)
 
     # --- Generators ---
 
+    def _format_blind(self, value):
+        """Formatiert einen Blind-Wert sauber (entfernt unnötige Nachkommastellen)."""
+        # Auf 2 Nachkommastellen runden
+        val = round(float(value), 2)
+        if val.is_integer():
+            return str(int(val))
+        return str(val)
+
     def regenerate_schedule(self):
-        start_sb = int(self.current_start_blind) if self.current_start_blind else 0
-        if start_sb == 0:
+        try:
+            start_sb = float(self.current_start_blind)
+        except ValueError:
+            start_sb = 0.0
+            
+        if start_sb == 0.0:
             self.generated_schedule = []
         else:
             generator = self.strategies.get(self.current_strategy, self.generate_standard_schedule)
@@ -242,20 +273,17 @@ class BlindAdjustmentWindow(Gtk.Window):
         sb = start_sb
         for _ in range(20):
             bb = sb * 2
-            schedule.append((sb, bb))
+            schedule.append((self._format_blind(sb), self._format_blind(bb)))
             sb = bb
         return schedule
 
     def generate_standard_schedule(self, start_sb):
-        # Ein sanfterer Multiplikator-Fahrplan, der das "Standard-Turnier" simuliert.
-        # Übliche Sprünge: 1x, 2x, 3x, 4x, 5x, 10x, 15x, 20x, 40x
-        # Wenn start = 5: 5, 10, 15, 20, 25, 50, 75, 100, 200, 500
         multipliers = [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100, 150, 200, 300, 400, 500, 800, 1000, 2000]
         schedule = []
         for m in multipliers:
             sb = start_sb * m
             bb = sb * 2
-            schedule.append((sb, bb))
+            schedule.append((self._format_blind(sb), self._format_blind(bb)))
         return schedule
 
     def update_preview_list(self):
