@@ -235,8 +235,22 @@ async def broadcast_status():
             clients.remove(client)
 
 
+import time
+
+last_button_press_time = 0
+
 def advance_round_hardware():
     """Wird aufgerufen, wenn der physische Hardware-Button gedrückt wird."""
+    global last_button_press_time
+    
+    # 3 Sekunden Cooldown (Delay), um versehentliche Doppel-Klicks zu ignorieren
+    current_time = time.time()
+    if current_time - last_button_press_time < 3.0:
+        print("[HARDWARE] Button ignoriert (Cooldown aktiv).")
+        return
+        
+    last_button_press_time = current_time
+    
     print("[HARDWARE] Button gedrückt! Nächste Runde wird eingeleitet...")
     
     # 1. Runde erhöhen
@@ -269,7 +283,9 @@ def setup_hardware_button():
     if Button is not None:
         try:
             # GPIO 21 (Pin 40 am Raspberry Pi)
-            btn = Button(21, pull_up=True, bounce_time=0.3)
+            # bounce_time=0.05 (50ms) ist kurz genug für sofortige Reaktion,
+            # aber lang genug, um elektrische Störsignale zu filtern.
+            btn = Button(21, pull_up=True, bounce_time=0.05)
             btn.when_pressed = advance_round_hardware
             print("✅ Hardware-Button auf GPIO 21 initialisiert.")
             return btn
