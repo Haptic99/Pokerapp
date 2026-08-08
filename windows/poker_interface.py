@@ -68,18 +68,27 @@ class PokerInterface(Gtk.Window):
         self.create_table_right()
 
     def create_welcome_screen(self):
-        """Erstellt bzw. zeigt den Namenseingabe-Bildschirm.
-        Dabei werden alle anderen Buttons deaktiviert, sodass nur die Namenseingabe möglich ist."""
+        """Erstellt bzw. zeigt den Namenseingabe-Bildschirm."""
         # Zuerst alle Buttons deaktivieren
         self.disable_buttons()
 
         # Falls bereits ein Bildschirm existiert, zerstören wir ihn
-        if hasattr(self, "welcome_box") and self.welcome_box:
-            self.welcome_box.destroy()
+        if hasattr(self, "welcome_container") and self.welcome_container:
+            self.welcome_container.destroy()
+
+        # Vollbild-Container, der den Hintergrund abdunkelt
+        self.welcome_container = Gtk.EventBox()
+        self.welcome_container.set_name("welcome_container")
+        self.welcome_container.set_halign(Gtk.Align.FILL)
+        self.welcome_container.set_valign(Gtk.Align.FILL)
+        
+        # Zentrierungs-Box
+        center_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        center_box.set_halign(Gtk.Align.CENTER)
+        center_box.set_valign(Gtk.Align.CENTER)
+        self.welcome_container.add(center_box)
 
         self.welcome_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        self.welcome_box.set_halign(Gtk.Align.CENTER)
-        self.welcome_box.set_valign(Gtk.Align.CENTER)
         self.welcome_box.set_name("welcome_box")  # Für CSS
 
         # Begrüßungstext
@@ -93,8 +102,10 @@ class PokerInterface(Gtk.Window):
         self.name_button.connect("clicked", self.open_virtual_keyboard)
         self.welcome_box.pack_start(self.name_button, True, True, 0)
 
-        self.overlay.add_overlay(self.welcome_box)
-        self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
+        center_box.pack_start(self.welcome_box, True, True, 0)
+
+        self.overlay.add_overlay(self.welcome_container)
+        self.welcome_container.show_all()  # WICHTIG: Widget sichtbar machen
 
     def open_virtual_keyboard(self, button):
         current_text = button.get_label()
@@ -121,7 +132,7 @@ class PokerInterface(Gtk.Window):
 
         # Anmeldung erfolgreich: Namen speichern, Bildschirm schließen und fortfahren
         self.player_name = name
-        self.welcome_box.destroy()
+        self.welcome_container.destroy()
         
         # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
         self.player_name_label.set_markup(f"<span foreground='#808080'><b>{name}</b></span>")

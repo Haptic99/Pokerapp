@@ -15,6 +15,11 @@ GtkEventBox {
     background-color: rgba(0, 0, 0, 0.6); 
 }
 
+/* Begrüßungsbildschirm-Styling */
+#welcome_container {
+    background-color: rgba(10, 15, 20, 0.85); /* Dunkler, abdunkelnder Hintergrund */
+}
+
 /* Begrüßungsbildschirm-Styling (Glassmorphism) */
 #welcome_box {
     background-color: rgba(30, 40, 50, 0.85); /* Dark Glass */
