@@ -71,10 +71,10 @@ class PlayerPositionWindow(Gtk.Window):
         self.overlay.add_overlay(background_image)
 
     def add_pokertisch(self):
-        """Zeichnet den Pokertisch (grüne Matte) in fester Größe (800x480)."""
+        """Zeichnet den Pokertisch (grüne Matte) in fester Größe."""
         pokertisch_image_path = get_image_path("pokertisch.png")
-        # Preserve aspect ratio (True) damit es nach dem Zuschneiden nicht verzerrt aussieht
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pokertisch_image_path, 800, 480, True)
+        # Kleiner skaliert, damit er nicht an den Rand stößt (700x400)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pokertisch_image_path, 700, 420, True)
         pokertisch_image = Gtk.Image.new_from_pixbuf(pixbuf)
         pokertisch_image.set_halign(Gtk.Align.CENTER)
         pokertisch_image.set_valign(Gtk.Align.CENTER)
@@ -83,9 +83,10 @@ class PlayerPositionWindow(Gtk.Window):
     def initialize_player_positions(self):
         """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges')."""
         center_x, center_y = 387.1, 228
+        # Plätze enger zusammengezogen, da der Tisch jetzt kleiner ist
         self.positions = [
-            (0, 160), (-250, 110), (-310, 0), (-250, -110),
-            (0, -160), (250, -110), (310, 0), (250, 110)
+            (0, 140), (-210, 95), (-265, 0), (-210, -95),
+            (0, -140), (210, -95), (265, 0), (210, 95)
         ]
         self.player_labels = []
         for i, (x, y) in enumerate(self.positions):
