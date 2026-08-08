@@ -83,40 +83,29 @@ class PokerInterface(Gtk.Window):
         self.welcome_box.set_name("welcome_box")  # Für CSS
 
         # Begrüßungstext
-        welcome_label = Gtk.Label(label="Willkommen! Bitte geben Sie Ihren Namen ein und klicken Sie auf Weiter.")
+        welcome_label = Gtk.Label(label="Willkommen! Klicken Sie unten, um dem Tisch beizutreten.")
         self.welcome_box.pack_start(welcome_label, True, True, 0)
 
-        # Eingabefeld für den Namen (als Button simuliert für Touch)
-        self.name_button = Gtk.Button(label="Name eingeben...")
-        self.name_button.get_style_context().add_class("entry-field")
+        # "Platz nehmen" Button, der direkt die Tastatur öffnet
+        self.name_button = Gtk.Button(label="Platz nehmen")
+        self.name_button.get_style_context().add_class("button-custom")
+        self.name_button.set_size_request(200, 50)
         self.name_button.connect("clicked", self.open_virtual_keyboard)
         self.welcome_box.pack_start(self.name_button, True, True, 0)
-
-        # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
-        weiter_button = Gtk.Button(label="Weiter")
-        weiter_button.connect("clicked", self.on_start_button_clicked)
-        self.welcome_box.pack_start(weiter_button, True, True, 0)
 
         self.overlay.add_overlay(self.welcome_box)
         self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
 
     def open_virtual_keyboard(self, button):
         current_text = button.get_label()
-        if current_text == "Name eingeben...":
+        if current_text == "Platz nehmen":
             current_text = ""
         kbd = VirtualKeyboardWindow(self, current_text, self.on_keyboard_confirm)
         kbd.show_all()
 
     def on_keyboard_confirm(self, name):
-        if name.strip():
-            self.name_button.set_label(name)
-        else:
-            self.name_button.set_label("Name eingeben...")
-
-    def on_start_button_clicked(self, button):
-        """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""
-        name = self.name_button.get_label().strip()
-        if not name or name == "Name eingeben...":
+        name = name.strip()
+        if not name:
             error_dialog = Gtk.MessageDialog(
                 transient_for=self,
                 flags=0,
@@ -124,23 +113,25 @@ class PokerInterface(Gtk.Window):
                 buttons=Gtk.ButtonsType.OK,
                 text="Fehler: Kein Name eingegeben!"
             )
-            error_dialog.format_secondary_text("Bitte geben Sie einen Namen ein und klicken Sie auf Weiter.")
+            error_dialog.format_secondary_text("Bitte geben Sie einen Namen ein, um Platz zu nehmen.")
             error_dialog.run()
             error_dialog.destroy()
+            self.name_button.set_label("Platz nehmen")
             return
 
+        # Anmeldung erfolgreich: Namen speichern, Bildschirm schließen und fortfahren
         self.player_name = name
-        # Entferne den Namenseingabe-Bildschirm
         self.welcome_box.destroy()
+        
         # In der Info-Tabelle wird nur der Name (in Fett und in Grau) angezeigt
         self.player_name_label.set_markup(f"<span foreground='#808080'><b>{name}</b></span>")
+        
         # Sende den Join-Request an den Server
+        import asyncio
         asyncio.run_coroutine_threadsafe(self.ws_client.send_join_message(name), self.ws_client.loop)
+        
         # Aktiviere alle Buttons (nun kann der Spieler interagieren)
         self.enable_buttons()
-
-    def on_name_entered(self, _):
-        pass
 
     def run_async_loop(self):
         """Startet den asynchronen Event-Loop im Hintergrund."""

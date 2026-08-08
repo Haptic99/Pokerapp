@@ -15,6 +15,11 @@ class VirtualKeyboardWindow(Gtk.Window):
         self.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
         self.set_decorated(False) # No title bar to make it look embedded
         
+        self.is_fullscreen_mode = False
+        if hasattr(parent, 'is_fullscreen_mode') and parent.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
+        
         self.overlay = Gtk.Overlay()
         self.add(self.overlay)
         
