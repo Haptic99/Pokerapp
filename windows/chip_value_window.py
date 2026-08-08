@@ -59,9 +59,9 @@ class ChipValueWindow(Gtk.Window):
         main_box.set_valign(Gtk.Align.CENTER)
         
         # Glass Panel for the whole UI
-        glass_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        glass_panel.set_margin_top(20)
-        glass_panel.set_margin_bottom(20)
+        glass_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        glass_panel.set_margin_top(10)
+        glass_panel.set_margin_bottom(10)
         glass_panel.set_margin_left(20)
         glass_panel.set_margin_right(20)
         glass_panel.get_style_context().add_class("glass-panel")
@@ -75,9 +75,11 @@ class ChipValueWindow(Gtk.Window):
         # FlowBox for Chips
         flow_box = Gtk.FlowBox()
         flow_box.set_valign(Gtk.Align.START)
+        flow_box.set_halign(Gtk.Align.CENTER)
+        flow_box.set_min_children_per_line(4)
         flow_box.set_max_children_per_line(4)
         flow_box.set_selection_mode(Gtk.SelectionMode.NONE)
-        flow_box.set_row_spacing(15)
+        flow_box.set_row_spacing(10)
         flow_box.set_column_spacing(15)
         
         self.chf_labels = {}
@@ -93,7 +95,7 @@ class ChipValueWindow(Gtk.Window):
             chip_path = os.path.join("Chips", chip_file)
             full_path = get_image_path(chip_path)
             if os.path.exists(full_path):
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 80, 80, True)
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 70, 70, True)
                 chip_image = Gtk.Image.new_from_pixbuf(pixbuf)
                 chip_card.pack_start(chip_image, False, False, 0)
                 
