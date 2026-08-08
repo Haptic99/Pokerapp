@@ -81,7 +81,7 @@ class PlayerPositionWindow(Gtk.Window):
         self.overlay.add_overlay(pokertisch_image)
 
     def initialize_player_positions(self):
-        """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges'). 400, 240"""
+        """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges')."""
         center_x, center_y = 387.1, 228
         self.positions = [
             (0, 160), (-250, 110), (-310, 0), (-250, -110),
