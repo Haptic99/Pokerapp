@@ -40,9 +40,27 @@ class PokerInterface(Gtk.Window):
         self.background_image_path = get_image_path("background_start.jpg")
         self.set_background_image(self.background_image_path)
 
-        # Fixed-Container für Buttons und Tabellen
-        self.fixed = Gtk.Fixed()
-        self.overlay.add_overlay(self.fixed)
+        # Dynamisches Haupt-Layout für Tabellen und Buttons
+        self.main_layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        
+        self.tables_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.tables_hbox.set_margin_top(15)
+        self.tables_hbox.set_margin_left(15)
+        self.tables_hbox.set_margin_right(15)
+        
+        self.buttons_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.buttons_hbox.set_margin_bottom(24)
+        self.buttons_hbox.set_margin_left(15)
+        self.buttons_hbox.set_margin_right(15)
+        
+        self.main_layout.pack_start(self.tables_hbox, False, False, 0)
+        
+        spacer_main = Gtk.Label()
+        self.main_layout.pack_start(spacer_main, True, True, 0)
+        
+        self.main_layout.pack_end(self.buttons_hbox, False, False, 0)
+        
+        self.overlay.add_overlay(self.main_layout)
 
         # Buttons erstellen
         self.create_buttons()
@@ -169,32 +187,47 @@ class PokerInterface(Gtk.Window):
             self.overlay.add(background_image)
             self.overlay.set_overlay_pass_through(background_image, True)
 
-    def disable_buttons(self):
-        """Deaktiviert alle Buttons im Fixed-Container."""
-        for child in self.fixed.get_children():
+    def _set_buttons_sensitive(self, container, sensitive):
+        for child in container.get_children():
             if isinstance(child, Gtk.Button):
-                child.set_sensitive(False)
+                child.set_sensitive(sensitive)
+            elif hasattr(child, 'get_children'):
+                self._set_buttons_sensitive(child, sensitive)
+
+    def disable_buttons(self):
+        """Deaktiviert alle Buttons im Container."""
+        if hasattr(self, 'buttons_hbox'):
+            self._set_buttons_sensitive(self.buttons_hbox, False)
 
     def enable_buttons(self):
-        """Aktiviert alle Buttons im Fixed-Container."""
-        for child in self.fixed.get_children():
-            if isinstance(child, Gtk.Button):
-                child.set_sensitive(True)
+        """Aktiviert alle Buttons im Container."""
+        if hasattr(self, 'buttons_hbox'):
+            self._set_buttons_sensitive(self.buttons_hbox, True)
 
     def create_buttons(self):
+        left_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=35)
+        
         # Button: Chipwerte
         chipwerte_button = Gtk.Button(label="Chipwerte")
         chipwerte_button.set_size_request(100, 40)
         chipwerte_button.connect("clicked", self.button_chipwerte_click)
         chipwerte_button.get_style_context().add_class("button-custom")
-        self.fixed.put(chipwerte_button, 15, 416)
+        left_buttons.pack_start(chipwerte_button, False, False, 0)
 
         # Button: Poker Hands
         poker_hands_button = Gtk.Button(label="Poker Hands")
         poker_hands_button.set_size_request(100, 40)
         poker_hands_button.connect("clicked", self.button_poker_hands_click)
         poker_hands_button.get_style_context().add_class("button-custom")
-        self.fixed.put(poker_hands_button, 150, 416)
+        left_buttons.pack_start(poker_hands_button, False, False, 0)
+        
+        self.buttons_hbox.pack_start(left_buttons, False, False, 0)
+
+        # Spacer in der Mitte
+        spacer = Gtk.Label()
+        self.buttons_hbox.pack_start(spacer, True, True, 0)
+
+        right_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=35)
 
         # Falls Admin: Button "Administration"
         if self.is_admin:
@@ -202,7 +235,7 @@ class PokerInterface(Gtk.Window):
             self.administration_button.set_size_request(100, 40)
             self.administration_button.connect("clicked", self.button_administration_click)
             self.administration_button.get_style_context().add_class("button-custom")
-            self.fixed.put(self.administration_button, 450, 416)
+            right_buttons.pack_start(self.administration_button, False, False, 0)
 
         # Button "Platz verlassen" – immer mit diesem Label
         self.leave_button = Gtk.Button(label="Platz verlassen")
@@ -211,7 +244,9 @@ class PokerInterface(Gtk.Window):
         self.leave_button.connect("clicked", self.on_leave_button_clicked)
         # Dieser Button ist erst aktiv, wenn ein Name eingegeben wurde
         self.leave_button.set_sensitive(False)
-        self.fixed.put(self.leave_button, 610, 416)
+        right_buttons.pack_start(self.leave_button, False, False, 0)
+        
+        self.buttons_hbox.pack_start(right_buttons, False, False, 0)
 
     def on_leave_button_clicked(self, button):
         dialog = Gtk.MessageDialog(
@@ -345,7 +380,7 @@ class PokerInterface(Gtk.Window):
                 self.table_left.attach(frame1, 0, row, 1, 1)
                 self.table_left.attach(frame2, 1, row, 1, 1)
 
-        self.fixed.put(self.table_left, 15, 15)
+        self.tables_hbox.pack_start(self.table_left, False, False, 0)
 
     def create_table_right(self):
         table = Gtk.Grid()
@@ -397,7 +432,10 @@ class PokerInterface(Gtk.Window):
             table.attach(frame_title, 0, row, 1, 1)
             table.attach(frame_time, 1, row, 1, 1)
 
-        self.fixed.put(table, 515, 15)
+        # Spacer in die Mitte, um die rechte Tabelle an den Rand zu pushen
+        spacer = Gtk.Label()
+        self.tables_hbox.pack_start(spacer, True, True, 0)
+        self.tables_hbox.pack_start(table, False, False, 0)
 
     def on_key_press(self, widget, event):
         """Keybindings für Escape und F11."""
