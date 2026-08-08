@@ -59,9 +59,9 @@ class ChipValueWindow(Gtk.Window):
         main_box.set_valign(Gtk.Align.CENTER)
         
         # Glass Panel for the whole UI
-        glass_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        glass_panel.set_margin_top(10)
-        glass_panel.set_margin_bottom(10)
+        glass_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        glass_panel.set_margin_top(5)
+        glass_panel.set_margin_bottom(5)
         glass_panel.set_margin_left(20)
         glass_panel.set_margin_right(20)
         glass_panel.get_style_context().add_class("glass-panel")
@@ -70,24 +70,23 @@ class ChipValueWindow(Gtk.Window):
         title_text = "Chipwerte Verwaltung (Admin)" if self.is_admin else "Chipwerte Übersicht"
         title_label = Gtk.Label(label=title_text)
         title_label.get_style_context().add_class("time-title")
-        glass_panel.pack_start(title_label, False, False, 10)
+        glass_panel.pack_start(title_label, False, False, 5)
         
-        # FlowBox for Chips
-        flow_box = Gtk.FlowBox()
-        flow_box.set_valign(Gtk.Align.START)
-        flow_box.set_halign(Gtk.Align.CENTER)
-        flow_box.set_min_children_per_line(4)
-        flow_box.set_max_children_per_line(4)
-        flow_box.set_selection_mode(Gtk.SelectionMode.NONE)
-        flow_box.set_row_spacing(10)
-        flow_box.set_column_spacing(15)
+        # Container for the two rows
+        rows_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        
+        top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        top_row.set_halign(Gtk.Align.CENTER)
+        
+        bottom_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        bottom_row.set_halign(Gtk.Align.CENTER)
         
         self.chf_labels = {}
         sorted_chips = sorted(ChipData.CHIPS.items(), key=lambda x: x[1])
         
-        for chip_file, chip_value in sorted_chips:
+        for index, (chip_file, chip_value) in enumerate(sorted_chips):
             # Chip Card
-            chip_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            chip_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             chip_card.get_style_context().add_class("chip-card")
             chip_card.set_halign(Gtk.Align.CENTER)
             
@@ -95,7 +94,7 @@ class ChipValueWindow(Gtk.Window):
             chip_path = os.path.join("Chips", chip_file)
             full_path = get_image_path(chip_path)
             if os.path.exists(full_path):
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 70, 70, True)
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(full_path, 50, 50, True)
                 chip_image = Gtk.Image.new_from_pixbuf(pixbuf)
                 chip_card.pack_start(chip_image, False, False, 0)
                 
@@ -120,22 +119,27 @@ class ChipValueWindow(Gtk.Window):
             else:
                 chip_card.pack_start(chf_label, False, False, 0)
                 
-            flow_box.add(chip_card)
-            
-        glass_panel.pack_start(flow_box, True, True, 0)
+            # 4 Chips in der ersten Reihe, 3 in der zweiten
+            if index < 4:
+                top_row.pack_start(chip_card, False, False, 0)
+            else:
+                bottom_row.pack_start(chip_card, False, False, 0)
+                
+        rows_container.pack_start(top_row, False, False, 0)
+        rows_container.pack_start(bottom_row, False, False, 0)
+        glass_panel.pack_start(rows_container, True, True, 0)
         
-        # Status Label
+        # Status Label (nur ganz klein)
         self.status_label = Gtk.Label(label="")
-        self.status_label.set_margin_bottom(10)
         glass_panel.pack_start(self.status_label, False, False, 0)
         
         # Close button
         back_button = Gtk.Button(label="Schliessen")
-        back_button.set_size_request(150, 45)
+        back_button.set_size_request(120, 35)
         back_button.set_halign(Gtk.Align.CENTER)
         back_button.connect("clicked", self.on_back_button_click)
         back_button.get_style_context().add_class("button-custom")
-        glass_panel.pack_start(back_button, False, False, 10)
+        glass_panel.pack_start(back_button, False, False, 5)
         
         main_box.pack_start(glass_panel, False, False, 0)
         self.overlay.add_overlay(main_box)
