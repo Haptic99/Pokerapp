@@ -32,7 +32,7 @@ class WebSocketClient:
         self.uri = (
             f"ws://{self.server_address[0]}:{self.server_address[1]}"
             if self.server_address
-            else "ws://192.168.1.65:8765"
+            else "ws://192.168.8.200:8765"
         )
 
     def start_async_loop(self):
@@ -132,7 +132,7 @@ class WebSocketClient:
         listener = MyListener()
         ServiceBrowser(zeroconf, "_poker._tcp.local.", listener)
 
-        time.sleep(0.3)  # Warte einige Sekunden, um Dienste zu entdecken
+        time.sleep(1.5)  # Warte genügend Zeit, um Dienste im Netzwerk zu entdecken
         zeroconf.close()
 
         if listener.server_address:
