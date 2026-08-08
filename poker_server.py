@@ -177,8 +177,10 @@ async def handle_client(websocket):
 
     except websockets.exceptions.ConnectionClosed:
         print("❌ Client hat die Verbindung getrennt.")
+    except Exception as e:
+        print(f"❌ Fehler bei der Verbindung: {e}")
     finally:
-        clients.remove(websocket)
+        clients.discard(websocket)
 
 
 async def send_status(websocket):
@@ -239,8 +241,7 @@ async def broadcast_status():
 
     # Erst nach der Iteration die zu entfernenden Clients tatsächlich entfernen
     for client in to_remove:
-        if client in clients:  # Sicherheitscheck, falls der Client bereits entfernt wurde
-            clients.remove(client)
+        clients.discard(client)
 
 
 import time
@@ -307,7 +308,7 @@ def setup_hardware_button():
 async def main():
     hw_button = setup_hardware_button()
     try:
-        async with websockets.serve(handle_client, "0.0.0.0", port):
+        async with websockets.serve(handle_client, "0.0.0.0", port, ping_interval=5, ping_timeout=5):
             print(f"Poker-Server läuft auf Port {port}")
             # Starte den aggregierten Update-Loop
             asyncio.create_task(update_loop())

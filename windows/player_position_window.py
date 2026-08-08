@@ -22,10 +22,13 @@ class PlayerPositionWindow(Gtk.Window):
 
         # Hauptcontainer (VBox für Layout)
         self.main_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.main_container.set_halign(Gtk.Align.CENTER)
+        self.main_container.set_valign(Gtk.Align.CENTER)
         self.add(self.main_container)
 
         # Overlay für den Hintergrund und die Spielerplätze
         self.overlay = Gtk.Overlay()
+        self.overlay.set_size_request(800, 480)
         self.main_container.pack_start(self.overlay, True, True, 0)
 
         # Hintergrundbild setzen
@@ -68,14 +71,10 @@ class PlayerPositionWindow(Gtk.Window):
         self.overlay.add_overlay(background_image)
 
     def add_pokertisch(self):
-        """Zeichnet den Pokertisch (grüne Matte) mit dynamischer Größe."""
+        """Zeichnet den Pokertisch (grüne Matte) in fester Größe (800x480)."""
         pokertisch_image_path = get_image_path("pokertisch.png")
 
-        window_width, window_height = self.get_size()
-        table_width = int(window_width)
-        table_height = int(window_height)
-
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pokertisch_image_path, table_width, table_height, False)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pokertisch_image_path, 800, 480, False)
         pokertisch_image = Gtk.Image.new_from_pixbuf(pixbuf)
         pokertisch_image.set_halign(Gtk.Align.CENTER)
         pokertisch_image.set_valign(Gtk.Align.CENTER)

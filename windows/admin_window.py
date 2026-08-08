@@ -396,28 +396,17 @@ class AdminWindow(Gtk.Window):
         self.player_window = PlayerPositionWindow(self, [])
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
-        self.update_player_window()
+        # Hole einmalig initial die Daten über den bestehenden WebSocket
+        if hasattr(self.poker_interface, "ws_client") and self.poker_interface.ws_client.websocket:
+            asyncio.run_coroutine_threadsafe(
+                self.poker_interface.ws_client.websocket.send(json.dumps({"command": "get_status"})),
+                self.poker_interface.loop
+            )
 
     def on_player_window_closed(self, widget):
         # (Rest der Methode wie im Original)
         print("Spielerplatzierungsfenster geschlossen.")
         self.player_window = None
-        if hasattr(self, "update_timer_id") and self.update_timer_id is not None:
-            GLib.source_remove(self.update_timer_id)
-            print("⏱ Timer für Spielerplatzierungs-Updates gestoppt.")
-            self.update_timer_id = None
-
-        async def close_websocket():
-            if self.persistent_websocket:
-                try:
-                    await self.persistent_websocket.close()
-                    print("WebSocket-Verbindung geschlossen.")
-                except Exception as e:
-                    print(f"⚠ Fehler beim Schließen der WebSocket-Verbindung: {e}")
-                finally:
-                    self.persistent_websocket = None
-
-        asyncio.run_coroutine_threadsafe(close_websocket(), self.poker_interface.loop)
 
     def open_blind_adjustment_window(self, widget):
         # (Rest der Methode wie im Original)
@@ -429,34 +418,6 @@ class AdminWindow(Gtk.Window):
         timer_window = TimerSettingWindow(self, self.on_timer_values_confirmed)
         timer_window.show_all()
 
-    def update_player_window(self):
-        # (Rest der Methode wie im Original)
-        async def fetch_players():
-            try:
-                server_ip, server_port = self.poker_interface.server_address
-                uri = f"ws://{server_ip}:{server_port}"
-
-                if not self.persistent_websocket:
-                    self.persistent_websocket = await websockets.connect(uri)
-                    print(f"WebSocket-Verbindung hergestellt: {uri}")
-
-                await self.persistent_websocket.send(json.dumps({"command": "get_status"}))
-                message = await self.persistent_websocket.recv()
-                data = json.loads(message)
-                players = data.get("players", [])
-                print(f"Spieler erhalten: {players}")
-                GLib.idle_add(self.player_window.update_player_positions, players)
-
-            except Exception as e:
-                print(f"⚠ Fehler beim Abrufen der Spieler: {e}")
-                if self.persistent_websocket:
-                    await self.persistent_websocket.close()
-                    self.persistent_websocket = None
-
-        asyncio.run_coroutine_threadsafe(fetch_players(), self.poker_interface.loop)
-        if self.player_window:
-            self.update_timer_id = GLib.timeout_add_seconds(1, lambda: self.update_player_window() or False)
-        return False
 
     def on_blind_values_confirmed(self, small_blind, big_blind):
         # (Rest der Methode wie im Original)

@@ -97,6 +97,18 @@ def update_client_display(instance, data):
             except Exception as e:
                 print("Fehler bei der Umwandlung der konfigurierten Timer-Werte:", e)
                 set_time_str = "-"
+
+        # --- Aktualisiere Player Window falls vorhanden ---
+        if "players" in data:
+            players = data.get("players", [])
+            # Wenn wir direkt ein player_window haben (Normal Client - Zukunft)
+            if hasattr(instance, "player_window") and instance.player_window:
+                instance.player_window.update_player_positions(players)
+            # Wenn es via AdminWindow aufgerufen wurde
+            if hasattr(instance, "admin_window") and instance.admin_window:
+                if hasattr(instance.admin_window, "player_window") and instance.admin_window.player_window:
+                    instance.admin_window.player_window.update_player_positions(players)
+
         if hasattr(instance, "timer_labels") and "Eingestellte Zeit" in instance.timer_labels:
             instance.timer_labels["Eingestellte Zeit"].set_text(set_time_str)
 
