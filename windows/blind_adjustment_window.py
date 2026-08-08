@@ -57,20 +57,30 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.regenerate_schedule()
 
     def create_left_panel(self):
-        # Strategie Auswahl
+        # Strategie Auswahl (als Toggle-Buttons statt Dropdown)
         lbl_strategy = Gtk.Label(label="Strategie:")
         lbl_strategy.get_style_context().add_class("time-title")
         self.fixed.put(lbl_strategy, 30, 20)
 
-        self.combo_strategy = Gtk.ComboBoxText()
-        for strategy in self.strategies.keys():
-            self.combo_strategy.append_text(strategy)
-        self.combo_strategy.set_active(0)
-        self.combo_strategy.connect("changed", self.on_strategy_changed)
-        self.combo_strategy.set_size_request(220, 40)
-        # Dropdown im Button-Look stylen
-        self.combo_strategy.get_style_context().add_class("button-custom")
-        self.fixed.put(self.combo_strategy, 30, 50)
+        # HBox für die Toggle-Buttons
+        strategy_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        
+        self.btn_strategy_standard = Gtk.RadioButton.new_with_label_from_widget(None, "Standard")
+        self.btn_strategy_standard.set_mode(False) # Sieht aus wie ein Button
+        self.btn_strategy_standard.set_size_request(110, 40)
+        self.btn_strategy_standard.get_style_context().add_class("button-custom")
+        self.btn_strategy_standard.connect("toggled", self.on_strategy_toggled, "Standard-Turnier")
+        
+        self.btn_strategy_double = Gtk.RadioButton.new_with_label_from_widget(self.btn_strategy_standard, "Verdoppeln")
+        self.btn_strategy_double.set_mode(False) # Sieht aus wie ein Button
+        self.btn_strategy_double.set_size_request(110, 40)
+        self.btn_strategy_double.get_style_context().add_class("button-custom")
+        self.btn_strategy_double.connect("toggled", self.on_strategy_toggled, "Immer Verdoppeln")
+        
+        strategy_box.pack_start(self.btn_strategy_standard, True, True, 0)
+        strategy_box.pack_start(self.btn_strategy_double, True, True, 0)
+        
+        self.fixed.put(strategy_box, 30, 50)
 
         # Start Blind Eingabe
         lbl_start = Gtk.Label(label="Start Small Blind:")
@@ -209,9 +219,10 @@ class BlindAdjustmentWindow(Gtk.Window):
             return True # Event konsumieren, damit beim Wischen keine Zeilen markiert werden
         return False
 
-    def on_strategy_changed(self, combo):
-        self.current_strategy = combo.get_active_text()
-        self.regenerate_schedule()
+    def on_strategy_toggled(self, button, strategy_name):
+        if button.get_active():
+            self.current_strategy = strategy_name
+            self.regenerate_schedule()
 
     def on_numpad_number(self, button, digit):
         if self.is_first_input:
