@@ -1,9 +1,9 @@
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
-import gi
-gi.require_version('Gtk', '3.0')
 
 
 class PokerClient(PokerInterface):
@@ -34,4 +34,7 @@ class PokerClient(PokerInterface):
 if __name__ == '__main__':
     client = PokerClient()
     client.show_all()
-    Gtk.main()
+    try:
+        Gtk.main()
+    except KeyboardInterrupt:
+        print("\nPoker Client wurde beendet.")

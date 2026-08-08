@@ -6,12 +6,12 @@ It provides an interface with admin privileges to manage the poker game,
 including features like setting blinds, managing timers, and monitoring players.
 """
 
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from windows.poker_interface import PokerInterface
 from utils.display_utils import update_client_display
 from utils.websocket_utils import WebSocketClient
-import gi
-gi.require_version('Gtk', '3.0')
 
 
 class PokerAdminClient(PokerInterface):
@@ -53,4 +53,7 @@ class PokerAdminClient(PokerInterface):
 if __name__ == '__main__':
     admin_client = PokerAdminClient()
     admin_client.show_all()
-    Gtk.main()
+    try:
+        Gtk.main()
+    except KeyboardInterrupt:
+        print("\nPoker Admin Client wurde beendet.")
