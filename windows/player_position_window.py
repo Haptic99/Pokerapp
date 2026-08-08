@@ -82,7 +82,7 @@ class PlayerPositionWindow(Gtk.Window):
 
     def initialize_player_positions(self):
         """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges'). 400, 240"""
-        center_x, center_y = 388, 228
+        center_x, center_y = 387.1, 228
         self.positions = [
             (0, 160), (-250, 110), (-310, 0), (-250, -110),
             (0, -160), (250, -110), (310, 0), (250, 110)
