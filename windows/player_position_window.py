@@ -95,6 +95,7 @@ class PlayerPositionWindow(Gtk.Window):
             # Hauptcontainer für die Platz-Karte
             badge_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             badge_box.get_style_context().add_class("seat-badge")
+            badge_box.set_size_request(140, -1)
             
             # Ausrichtung auf dem Overlay
             badge_box.set_halign(Gtk.Align.START)
