@@ -4,7 +4,6 @@ from gi.repository import Gtk, Gdk, GLib
 from utils.helpers import set_background_image
 from utils.resources import get_image_path
 from data.blind_data import BlindData
-
 import gi
 gi.require_version('Gtk', '3.0')
 
@@ -15,297 +14,233 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.set_default_size(800, 480)
         self.set_transient_for(parent)
         self.set_modal(True)
-
-        # Variable für Vollbildmodus initialisieren
         self.is_fullscreen_mode = False
+        
+        self.parent_poker_interface = parent
 
-        # Überprüfen, ob das Elternfenster im Vollbildmodus ist
         if parent.is_fullscreen_mode:
             self.fullscreen()
             self.is_fullscreen_mode = True
 
-        # Hintergrundbild setzen
         self.overlay = Gtk.Overlay()
         self.add(self.overlay)
-
         self.background_image_path = get_image_path("background_start.jpg")
         set_background_image(self.overlay, self.background_image_path)
 
-        # Hauptcontainer erstellen
         self.fixed = Gtk.Fixed()
         self.overlay.add_overlay(self.fixed)
 
-        # Liste für Numpad-Buttons
-        self.numpad_buttons = []
-
-        # Zellen für Small Blind und Big Blind erstellen
-        self.create_blind_cells()
-
-        # NumPad erstellen
-        self.create_numpad()
-
-        # "Zurück" Button hinzufügen
-        self.create_back_button()
-
-        # Aktuelles Eingabefeld (Small Blind oder Big Blind)
-        self.current_blind = None
-
-        # Flag, um zu verfolgen, ob eine neue Eingabe begonnen wurde
-        self.new_entry = False
-
-        # Bestätigungs-Callback
         self.confirm_callback = confirm_callback
+        
+        # State
+        self.current_start_blind = "5"
+        self.strategies = {
+            "Standard-Turnier": self.generate_standard_schedule,
+            "Immer Verdoppeln": self.generate_doubling_schedule
+        }
+        self.current_strategy = "Standard-Turnier"
+        self.generated_schedule = []
 
-        # Keybindings für Vollbildmodus und Escape
+        self.create_left_panel()
+        self.create_right_panel()
+
         self.connect("key-press-event", self.on_key_press)
+        
+        # Initiale Generierung
+        self.regenerate_schedule()
 
-    def create_blind_cells(self):
-        # Container für die Blinds auf der linken Seite
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        vbox.set_homogeneous(False)
-        self.fixed.put(vbox, 130, 100)  # Position anpassen
+    def create_left_panel(self):
+        # Strategie Auswahl
+        lbl_strategy = Gtk.Label(label="Strategie:")
+        lbl_strategy.get_style_context().add_class("time-title")
+        self.fixed.put(lbl_strategy, 30, 20)
 
-        # Small Blind Titel
-        label_small_title = Gtk.Label(label="Small Blind")
-        label_small_title.get_style_context().add_class("time-title")  # Verwende time-title wie im TimerSettingWindow
-        vbox.pack_start(label_small_title, False, False, 5)
+        self.combo_strategy = Gtk.ComboBoxText()
+        for strategy in self.strategies.keys():
+            self.combo_strategy.append_text(strategy)
+        self.combo_strategy.set_active(0)
+        self.combo_strategy.connect("changed", self.on_strategy_changed)
+        self.combo_strategy.set_size_request(220, 40)
+        self.fixed.put(self.combo_strategy, 30, 50)
 
-        # Aktuelle Blind-Werte abrufen oder '00' setzen, wenn None
-        small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "0"
-        big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "0"
+        # Start Blind Eingabe
+        lbl_start = Gtk.Label(label="Start Small Blind:")
+        lbl_start.get_style_context().add_class("time-title")
+        self.fixed.put(lbl_start, 30, 110)
 
-        # Versuche, als Integer zu konvertieren und formatieren
-        try:
-            small_blind_text = f"{int(small_blind_value):02}"
-        except (ValueError, TypeError):
-            small_blind_text = "00"
+        self.label_start_blind = Gtk.Label(label=f"{int(self.current_start_blind):02}")
+        self.label_start_blind.get_style_context().add_class("time-value")
+        self.label_start_blind.get_style_context().add_class("time-selected")
+        
+        btn_start_blind = Gtk.Button()
+        btn_start_blind.add(self.label_start_blind)
+        btn_start_blind.get_style_context().add_class("time-button")
+        btn_start_blind.set_size_request(220, 50)
+        self.fixed.put(btn_start_blind, 30, 140)
 
-        try:
-            big_blind_text = f"{int(big_blind_value):02}"
-        except (ValueError, TypeError):
-            big_blind_text = "00"
-
-        # Small Blind Wert
-        self.label_small_blind = Gtk.Label(label=small_blind_text)
-        self.label_small_blind.get_style_context().add_class("time-value")  # Verwende time-value statt blind-value
-
-        # Button um das Label, um Klicks zu erfassen
-        self.button_small_blind = Gtk.Button()
-        self.button_small_blind.add(self.label_small_blind)
-        self.button_small_blind.get_style_context().add_class("time-button")  # Verwende time-button statt blind-button
-        self.button_small_blind.connect("clicked", self.on_blind_click, "small")
-        vbox.pack_start(self.button_small_blind, False, False, 5)
-
-        # Big Blind Titel
-        label_big_title = Gtk.Label(label="Big Blind")
-        label_big_title.get_style_context().add_class("time-title")  # Verwende time-title wie im TimerSettingWindow
-        vbox.pack_start(label_big_title, False, False, 5)
-
-        # Big Blind Wert
-        self.label_big_blind = Gtk.Label(label=big_blind_text)
-        self.label_big_blind.get_style_context().add_class("time-value")  # Verwende time-value statt blind-value
-
-        # Button um das Label, um Klicks zu erfassen
-        self.button_big_blind = Gtk.Button()
-        self.button_big_blind.add(self.label_big_blind)
-        self.button_big_blind.get_style_context().add_class("time-button")  # Verwende time-button statt blind-button
-        self.button_big_blind.connect("clicked", self.on_blind_click, "big")
-        vbox.pack_start(self.button_big_blind, False, False, 5)
-
-    def create_numpad(self):
-        # NumPad auf der rechten Seite
+        # Numpad (kleiner)
         grid = Gtk.Grid()
-        grid.set_row_spacing(10)
-        grid.set_column_spacing(10)
-        self.fixed.put(grid, 400, 50)  # Position anpassen
+        grid.set_row_spacing(5)
+        grid.set_column_spacing(5)
+        self.fixed.put(grid, 30, 210)
 
-        # Erstellen der Buttons
         buttons = [
             ('1', 0, 0), ('2', 1, 0), ('3', 2, 0),
             ('4', 0, 1), ('5', 1, 1), ('6', 2, 1),
             ('7', 0, 2), ('8', 1, 2), ('9', 2, 2),
-            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3),
-            ('Ok', 0, 4, 3)  # 'Ok' Button über drei Spalten
+            ('C', 0, 3), ('0', 1, 3), ('←', 2, 3)
         ]
 
         for item in buttons:
-            label = item[0]
-            x = item[1]
-            y = item[2]
-            if len(item) == 4:
-                width = item[3]
-                height = 1
-            else:
-                width = 1
-                height = 1
-
+            label, x, y = item
             button = Gtk.Button(label=label)
-            button.set_size_request(70 * width + 10 * (width - 1), 70)  # Größe anpassen
+            button.set_size_request(70, 50)
             button.get_style_context().add_class("numpad-button")
-
-            # Spezielle Behandlung für den 'Ok' Button
-            if label == 'Ok':
-                button.connect("clicked", self.on_ok_button_click)
+            
+            if label == 'C':
+                button.connect("clicked", self.on_numpad_clear)
             elif label == '←':
-                button.connect("clicked", self.on_backspace_button_click)
+                button.connect("clicked", self.on_numpad_backspace)
             else:
-                button.connect("clicked", self.on_numpad_button_click)
+                button.connect("clicked", self.on_numpad_number, label)
+                
+            grid.attach(button, x, y, 1, 1)
 
-            grid.attach(button, x, y, width, height)
-            # Füge den Button zur Liste hinzu
-            self.numpad_buttons.append(button)
+    def create_right_panel(self):
+        # Vorschau-Titel
+        lbl_preview = Gtk.Label(label="Turnier-Fahrplan (nächste 20 Runden):")
+        lbl_preview.get_style_context().add_class("time-title")
+        self.fixed.put(lbl_preview, 300, 20)
 
-    def create_back_button(self):
-        # "Schliessen" Button unten rechts hinzufügen
-        back_button = Gtk.Button(label="Schliessen")
-        back_button.set_size_request(100, 40)
-        back_button.connect("clicked", self.on_back_button_click)
-        back_button.get_style_context().add_class("button-custom")
-        self.fixed.put(back_button, 658, 416)
+        # TreeView für Tabelle
+        self.liststore = Gtk.ListStore(str, str, str) # Level, SB, BB
+        self.treeview = Gtk.TreeView(model=self.liststore)
+        self.treeview.get_style_context().add_class("glass-panel")
+        
+        for i, column_title in enumerate(["Runde", "Small Blind", "Big Blind"]):
+            renderer = Gtk.CellRendererText()
+            # Stylen der Zellen via Code, da CSS für TreeView komplex ist
+            renderer.set_property("font", "Arial 16")
+            renderer.set_property("foreground", "white")
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column.set_min_width(140)
+            self.treeview.append_column(column)
 
-    def on_back_button_click(self, widget):
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_size_request(460, 330)
+        scroll.add(self.treeview)
+        
+        # Dunkler Hintergrund für die Liste
+        # scroll.get_style_context().add_class("glass-panel") 
+        self.fixed.put(scroll, 300, 50)
+
+        # Buttons
+        btn_apply = Gtk.Button(label="Plan übernehmen")
+        btn_apply.set_size_request(200, 45)
+        btn_apply.connect("clicked", self.on_apply_clicked)
+        btn_apply.get_style_context().add_class("button-custom")
+        self.fixed.put(btn_apply, 300, 400)
+
+        btn_close = Gtk.Button(label="Schliessen")
+        btn_close.set_size_request(150, 45)
+        btn_close.connect("clicked", lambda w: self.close())
+        btn_close.get_style_context().add_class("button-custom")
+        self.fixed.put(btn_close, 610, 400)
+
+    # --- Logic ---
+
+    def on_strategy_changed(self, combo):
+        self.current_strategy = combo.get_active_text()
+        self.regenerate_schedule()
+
+    def on_numpad_number(self, button, digit):
+        if self.current_start_blind == "0":
+            self.current_start_blind = digit
+        else:
+            self.current_start_blind += digit
+            
+        if len(self.current_start_blind) > 4: # Max 9999
+            self.current_start_blind = self.current_start_blind[:4]
+            
+        self.update_start_blind_display()
+        self.regenerate_schedule()
+
+    def on_numpad_clear(self, button):
+        self.current_start_blind = "0"
+        self.update_start_blind_display()
+        self.regenerate_schedule()
+
+    def on_numpad_backspace(self, button):
+        if len(self.current_start_blind) > 1:
+            self.current_start_blind = self.current_start_blind[:-1]
+        else:
+            self.current_start_blind = "0"
+        self.update_start_blind_display()
+        self.regenerate_schedule()
+
+    def update_start_blind_display(self):
+        val = int(self.current_start_blind) if self.current_start_blind else 0
+        self.label_start_blind.set_text(f"{val:02}")
+
+    # --- Generators ---
+
+    def regenerate_schedule(self):
+        start_sb = int(self.current_start_blind) if self.current_start_blind else 0
+        if start_sb == 0:
+            self.generated_schedule = []
+        else:
+            generator = self.strategies.get(self.current_strategy, self.generate_standard_schedule)
+            self.generated_schedule = generator(start_sb)
+            
+        self.update_preview_list()
+
+    def generate_doubling_schedule(self, start_sb):
+        schedule = []
+        sb = start_sb
+        for _ in range(20):
+            bb = sb * 2
+            schedule.append((sb, bb))
+            sb = bb
+        return schedule
+
+    def generate_standard_schedule(self, start_sb):
+        # Ein sanfterer Multiplikator-Fahrplan, der das "Standard-Turnier" simuliert.
+        # Übliche Sprünge: 1x, 2x, 3x, 4x, 5x, 10x, 15x, 20x, 40x
+        # Wenn start = 5: 5, 10, 15, 20, 25, 50, 75, 100, 200, 500
+        multipliers = [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100, 150, 200, 300, 400, 500, 800, 1000, 2000]
+        schedule = []
+        for m in multipliers:
+            sb = start_sb * m
+            bb = sb * 2
+            schedule.append((sb, bb))
+        return schedule
+
+    def update_preview_list(self):
+        self.liststore.clear()
+        for i, (sb, bb) in enumerate(self.generated_schedule):
+            self.liststore.append([f"Runde {i+1}", str(sb), str(bb)])
+
+    # --- Actions ---
+
+    def on_apply_clicked(self, button):
+        if not self.generated_schedule:
+            return
+            
+        # Sende den Plan direkt über den WebSocket an den Server!
+        import asyncio
+        asyncio.run_coroutine_threadsafe(
+            self.parent_poker_interface.ws_client.send_update_blind_schedule(self.generated_schedule), 
+            self.parent_poker_interface.ws_client.loop
+        )
+        
+        # Auf dem Client manuell auch für den Fall der Fälle den confirm callback feuern
+        sb, bb = self.generated_schedule[0]
+        if self.confirm_callback:
+            self.confirm_callback(str(sb), str(bb))
+            
         self.close()
 
-    def on_numpad_button_click(self, button):
-        label_text = button.get_label()
-        if self.current_blind is None:
-            return  # Kein Feld ausgewählt
-
-        if self.current_blind == "small":
-            current_label = self.label_small_blind
-        else:
-            current_label = self.label_big_blind
-
-        current_text = current_label.get_text()
-
-        if label_text == 'C':
-            # Label auf '00' setzen
-            current_label.set_text('00')
-            current_label.get_style_context().remove_class("error")
-            self.new_entry = True  # Neue Eingabe beginnen
-        else:
-            if self.new_entry or current_text == '00':
-                # Wenn neue Eingabe oder aktueller Text '00' ist, überschreiben
-                new_text = label_text
-                self.new_entry = False  # Nach der ersten Eingabe auf False setzen
-            else:
-                # An bestehenden Wert anhängen
-                new_text = current_text + label_text
-
-            try:
-                # Prüfen, ob die Eingabe zu groß ist
-                new_value = int(new_text)
-                if new_value > 9999:  # Maximalwert für Blinds festlegen
-                    new_value = 9999
-                    new_text = '9999'
-                    self.new_entry = True
-                    current_label.get_style_context().add_class("error")
-                    GLib.timeout_add(500, self.remove_error_class, current_label)
-                else:
-                    current_label.get_style_context().remove_class("error")
-            except ValueError:
-                new_value = 0
-                new_text = '00'
-                self.new_entry = True
-
-            # Aktualisiere den Wert mit führenden Nullen für einstellige Zahlen
-            current_label.set_text(f"{int(new_text):02}")
-
-            # Blind-Kopplung: Wenn Small Blind geändert wird, aktualisiere Big Blind
-            if self.current_blind == "small":
-                small_value = int(new_text)
-                # Big Blind ist doppelter Small Blind
-                self.label_big_blind.set_text(f"{small_value * 2:02}")
-
-    def remove_error_class(self, label):
-        """Entfernt die Fehlerklasse nach einer kurzen Zeit."""
-        label.get_style_context().remove_class("error")
-        return False
-
-    def on_ok_button_click(self, button):
-        # Werte in BlindData speichern
-        self.confirm_values()
-
-        # Fokus entfernen
-        self.remove_blind_focus()
-
-    def on_backspace_button_click(self, button):
-        if self.current_blind is None:
-            return  # Kein Feld ausgewählt
-
-        if self.current_blind == "small":
-            current_label = self.label_small_blind
-        else:
-            current_label = self.label_big_blind
-
-        current_text = current_label.get_text()
-
-        # Entferne das letzte Zeichen
-        if len(current_text) > 1:
-            new_text = current_text[:-1]
-            if len(new_text) == 1:  # Wenn nur noch eine Ziffer übrig ist
-                new_text = f"0{new_text}"  # Führende Null hinzufügen
-        else:
-            new_text = '00'
-            self.new_entry = True  # Neue Eingabe beginnen
-
-        current_label.set_text(new_text)
-
-        # Blind-Kopplung: Wenn Small Blind geändert wird, aktualisiere Big Blind
-        if self.current_blind == "small":
-            try:
-                small_value = int(new_text)
-                self.label_big_blind.set_text(f"{small_value * 2:02}")
-            except ValueError:
-                pass
-
-    def confirm_values(self):
-        small_blind = self.label_small_blind.get_text()
-        big_blind = self.label_big_blind.get_text()
-
-        # Entferne führende Nullen für BlindData
-        small_blind = str(int(small_blind))
-        big_blind = str(int(big_blind))
-
-        # Werte in BlindData speichern
-        BlindData.small_blind = small_blind
-        BlindData.big_blind = big_blind
-
-        # Callback aufrufen, wenn vorhanden
-        if self.confirm_callback:
-            self.confirm_callback(small_blind, big_blind)
-
-    def on_blind_click(self, widget, blind_type):
-        # Setze das aktuelle Eingabefeld
-        self.current_blind = blind_type
-        # Setze die Flag für neue Eingabe
-        self.new_entry = True
-        # Visuelles Feedback hinzufügen
-        self.highlight_selected_blind()
-
-    def highlight_selected_blind(self):
-        # CSS-Klassen zum Hervorheben hinzufügen oder entfernen, verwende time-selected statt blind-selected
-        if self.current_blind == "small":
-            self.label_small_blind.get_style_context().add_class("time-selected")
-            self.label_big_blind.get_style_context().remove_class("time-selected")
-        elif self.current_blind == "big":
-            self.label_big_blind.get_style_context().add_class("time-selected")
-            self.label_small_blind.get_style_context().remove_class("time-selected")
-
-    def remove_blind_focus(self):
-        """Entfernt den Fokus von allen Eingabefeldern."""
-        # Option 1: Fokus auf ein nicht-interaktives Element setzen
-        self.fixed.grab_focus()
-
-        # Option 2: Deselektiere die aktuelle Auswahl
-        self.current_blind = None
-
-        # Ausgewählte Blindfelder visuell deselektieren
-        self.label_small_blind.get_style_context().remove_class("time-selected")
-        self.label_big_blind.get_style_context().remove_class("time-selected")
-
     def on_key_press(self, widget, event):
-        """Keybindings für Escape und F11."""
         if event.keyval == Gdk.KEY_Escape:
             if self.is_fullscreen_mode:
                 self.unfullscreen()
@@ -313,13 +248,9 @@ class BlindAdjustmentWindow(Gtk.Window):
             else:
                 self.close()
         elif event.keyval == Gdk.KEY_F11:
-            self.toggle_fullscreen()
-
-    def toggle_fullscreen(self):
-        """Schaltet zwischen Vollbild und Fenstergröße um."""
-        if self.is_fullscreen_mode:
-            self.unfullscreen()
-            self.is_fullscreen_mode = False
-        else:
-            self.fullscreen()
-            self.is_fullscreen_mode = True
+            if self.is_fullscreen_mode:
+                self.unfullscreen()
+                self.is_fullscreen_mode = False
+            else:
+                self.fullscreen()
+                self.is_fullscreen_mode = True

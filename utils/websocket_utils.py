@@ -98,6 +98,14 @@ class WebSocketClient:
         }
         return await self.send_message(message)
 
+    async def send_update_blind_schedule(self, schedule_list):
+        """Sendet einen kompletten Fahrplan an den Server."""
+        message = {
+            "command": "update_blind_schedule",
+            "schedule": schedule_list
+        }
+        return await self.send_message(message)
+
     async def send_update_timer(self, minute, second, is_running):
         """Sendet aktualisierte Timer-Werte an den Server."""
         message = {

@@ -128,6 +128,14 @@ async def handle_client(websocket):
                 elif data["command"] == "update_blinds":
                     BlindData.small_blind = data["small_blind"]
                     BlindData.big_blind = data["big_blind"]
+                elif data["command"] == "update_blind_schedule":
+                    BlindData.BLIND_SCHEDULE = data["schedule"]
+                    BlindData.current_level_index = 0
+                    RoundData.count = 1
+                    if len(BlindData.BLIND_SCHEDULE) > 0:
+                        sb, bb = BlindData.BLIND_SCHEDULE[0]
+                        BlindData.small_blind = str(sb)
+                        BlindData.big_blind = str(bb)
                 elif data["command"] == "update_timer":
                     if data["is_running"]:
                         if TimerData.is_paused:
