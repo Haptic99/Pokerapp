@@ -341,14 +341,22 @@ class TimerSettingWindow(Gtk.Window):
 
             try:
                 new_value = int(new_text)
-                if new_value > 60:
-                    new_value = 60
-                    new_text = '60'
+                
+                if self.current_time == "second" and new_value >= 60:
+                    added_minutes = new_value // 60
+                    new_value = new_value % 60
+                    
+                    current_minutes = int(self.label_minute.get_text())
+                    self.label_minute.set_text(f"{current_minutes + added_minutes:02}")
+                    
+                    new_text = str(new_value)
                     self.new_entry = True
-                    current_label.get_style_context().add_class("error")
-                    GLib.timeout_add(500, self.remove_error_class, current_label)
-                else:
-                    current_label.get_style_context().remove_class("error")
+                elif self.current_time == "minute" and new_value > 999:
+                    new_value = 999
+                    new_text = '999'
+                    self.new_entry = True
+                    
+                current_label.get_style_context().remove_class("error")
             except ValueError:
                 new_value = 0
                 new_text = '00'

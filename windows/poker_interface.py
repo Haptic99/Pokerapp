@@ -4,6 +4,7 @@ from data.blind_data import BlindData
 from windows.admin_window import AdminWindow
 from windows.poker_hands_window import PokerHandsWindow
 from windows.chip_value_window import ChipValueWindow  # Import des normalen ChipValueWindow
+from windows.virtual_keyboard_window import VirtualKeyboardWindow
 
 import asyncio
 import websockets
@@ -85,11 +86,24 @@ class PokerInterface(Gtk.Window):
         welcome_label = Gtk.Label(label="Willkommen! Bitte geben Sie Ihren Namen ein und klicken Sie auf Weiter.")
         self.welcome_box.pack_start(welcome_label, True, True, 0)
 
-        # Eingabefeld für den Namen
-        self.name_entry = Gtk.Entry()
-        self.name_entry.set_placeholder_text("Name eingeben...")
-        self.name_entry.connect("activate", self.on_name_entered)
-        self.welcome_box.pack_start(self.name_entry, True, True, 0)
+        # Eingabefeld für den Namen (als Button simuliert für Touch)
+        self.name_button = Gtk.Button(label="Name eingeben...")
+        self.name_button.get_style_context().add_class("entry-field")
+        self.name_button.connect("clicked", self.open_virtual_keyboard)
+        self.welcome_box.pack_start(self.name_button, True, True, 0)
+
+    def open_virtual_keyboard(self, button):
+        current_text = button.get_label()
+        if current_text == "Name eingeben...":
+            current_text = ""
+        kbd = VirtualKeyboardWindow(self, current_text, self.on_keyboard_confirm)
+        kbd.show_all()
+
+    def on_keyboard_confirm(self, name):
+        if name.strip():
+            self.name_button.set_label(name)
+        else:
+            self.name_button.set_label("Name eingeben...")
 
         # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
         weiter_button = Gtk.Button(label="Weiter")
@@ -101,8 +115,8 @@ class PokerInterface(Gtk.Window):
 
     def on_start_button_clicked(self, button):
         """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""
-        name = self.name_entry.get_text().strip()
-        if not name:
+        name = self.name_button.get_label().strip()
+        if not name or name == "Name eingeben...":
             error_dialog = Gtk.MessageDialog(
                 transient_for=self,
                 flags=0,
@@ -126,8 +140,7 @@ class PokerInterface(Gtk.Window):
         self.enable_buttons()
 
     def on_name_entered(self, _):
-        """Bei Enter wird die gleiche Logik wie beim Klick auf 'Weiter' ausgeführt."""
-        self.on_start_button_clicked(None)
+        pass
 
     def run_async_loop(self):
         """Startet den asynchronen Event-Loop im Hintergrund."""

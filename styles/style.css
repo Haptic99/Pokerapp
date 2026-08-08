@@ -21,7 +21,7 @@ GtkEventBox {
     border: 1px solid rgba(212, 175, 55, 0.3); /* Goldener Schimmer */
     border-radius: 20px; 
     box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
-    padding: 30px; 
+    padding: 20px; 
 }
 
 /* Name-Eingabefeld */
@@ -38,7 +38,7 @@ GtkEventBox {
 .player-name {
     color: white; 
     font-weight: bold; 
-    font-size: 18px; 
+    font-size: 16px; 
 }
 
 .bold-text {
@@ -46,7 +46,7 @@ GtkEventBox {
 }
 
 .large-text {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
 }
 
@@ -59,7 +59,7 @@ GtkEventBox {
     color: #D4AF37; /* Luxuriöses Gold */
     font-weight: bold;
     font-family: sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
@@ -68,7 +68,7 @@ GtkEventBox {
     color: #F8F9FA; /* Strahlendes Weiß/Silber */
     font-weight: bold;
     font-family: sans-serif;
-    font-size: 15px;
+    font-size: 13px;
     text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
@@ -76,13 +76,13 @@ GtkEventBox {
 .red-text-Admin {
     color: #FF4C4C;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .green-text-Admin {
     color: #4CAF50;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* --- BUTTONS --- */
@@ -94,14 +94,14 @@ GtkEventBox {
     border-width: 1px;
     border-color: rgba(212, 175, 55, 0.6); /* Gold-Rand */
     border-radius: 12px;
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 8px 15px;
+    font-size: 13px;
     font-weight: bold;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 
-.button-custom:hover {
+.button-custom:active {
     background-image: linear-gradient(to bottom, rgba(50,65,85,1.0), rgba(30,45,60,1.0));
     border-color: #D4AF37;
     box-shadow: 0px 0px 12px rgba(212, 175, 55, 0.6); /* Goldener Glow-Effekt */
@@ -115,8 +115,8 @@ GtkEventBox {
     font-family: sans-serif;
     border: 2px solid rgba(212, 175, 55, 0.5);
     border-radius: 15px;
-    padding: 15px;
-    font-size: 25px;
+    padding: 10px;
+    font-size: 20px;
 }
 
 .reset-button {
@@ -124,7 +124,7 @@ GtkEventBox {
     border-color: #FF6347;
 }
 
-.reset-button:hover {
+.reset-button:active {
     background-image: linear-gradient(to bottom, rgba(190,40,40,1.0), rgba(130,20,20,1.0));
     border-color: #FFA07A;
     box-shadow: 0px 0px 12px rgba(255, 99, 71, 0.6);
@@ -134,21 +134,21 @@ GtkEventBox {
 .glass-panel {
     background-color: rgba(15, 25, 40, 0.7); /* Tiefes transparentes Blau */
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.8);
-    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.8);
+    padding: 8px;
 }
 
 /* Tabellenzellen-Stil ohne harten Rahmen (ersetzt alte table-cell) */
 .table-cell-transparent {
     background-color: transparent;
     border: none;
-    padding: 4px 8px;
+    padding: 4px 6px;
 }
 
 .cell-label {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 /* Stil für Frames */
@@ -157,22 +157,22 @@ GtkEventBox {
 }
 
 .table-label {
-    padding: 5px;
+    padding: 4px;
 }
 
 .grid-style {
-    margin: 10px;
+    margin: 8px;
 }
 
 .fixed-style {
-    margin: 10px;
+    margin: 8px;
 }
 
 /* --- NUMPAD --- */
 .numpad-button {
     background-image: linear-gradient(to bottom, rgba(50,60,75,0.9), rgba(30,40,55,0.9));
     color: white;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: bold;
     border: 1px solid rgba(212, 175, 55, 0.4);
     padding: 5px;
@@ -181,7 +181,7 @@ GtkEventBox {
     box-shadow: 0px 2px 5px rgba(0,0,0,0.4);
 }
 
-.numpad-button:hover {
+.numpad-button:active {
     background-image: linear-gradient(to bottom, rgba(70,85,100,1.0), rgba(45,60,75,1.0));
     border-color: #D4AF37;
 }
@@ -189,7 +189,7 @@ GtkEventBox {
 .numpad-button-ok {
     background-image: linear-gradient(to bottom, rgba(46,139,87,0.9), rgba(34,100,60,0.9));
     color: white;
-    font-size: 24px;
+    font-size: 22px;
     border-radius: 8px;
     border: 1px solid #3CB371;
 }
@@ -197,20 +197,20 @@ GtkEventBox {
 .numpad-button-backspace {
     background-image: linear-gradient(to bottom, rgba(100,100,100,0.9), rgba(60,60,60,0.9));
     color: white;
-    font-size: 24px;
+    font-size: 22px;
     border-radius: 8px;
 }
 
 /* --- BLIND & TIME ADJUSTMENT WINDOWS --- */
 .blind-title, .time-title {
-    font-size: 24px;
+    font-size: 20px;
     color: #D4AF37; /* Gold */
     margin-bottom: 5px;
     font-weight: bold;
 }
 
 .blind-value, .time-value {
-    font-size: 36px;
+    font-size: 32px;
     color: white;
     font-weight: bold;
 }
@@ -223,7 +223,7 @@ GtkEventBox {
     background-color: rgba(30, 40, 50, 0.8);
     border: 1px solid rgba(212, 175, 55, 0.5);
     border-radius: 10px;
-    padding: 10px;
+    padding: 8px;
 }
 
 .blind-selected, .time-selected {
@@ -237,4 +237,28 @@ GtkEventBox {
 .error {
     background-color: rgba(255, 76, 76, 0.3);
     transition: background-color 0.5s;
+}
+
+/* --- KEYBOARD --- */
+.keyboard-button {
+    background-image: linear-gradient(to bottom, rgba(50,60,75,0.9), rgba(30,40,55,0.9));
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    padding: 5px;
+    margin: 2px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.4);
+}
+
+.keyboard-button:active {
+    background-image: linear-gradient(to bottom, rgba(70,85,100,1.0), rgba(45,60,75,1.0));
+    border-color: #D4AF37;
+}
+
+.keyboard-button-special {
+    background-image: linear-gradient(to bottom, rgba(80,90,105,0.9), rgba(60,70,85,0.9));
+    color: #D4AF37;
+    font-size: 16px;
 }

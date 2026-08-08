@@ -107,8 +107,6 @@ class AdminWindow(Gtk.Window):
         adjust_blinds_button = Gtk.Button(label="Blinds anpassen")
         adjust_blinds_button.set_size_request(165, 40)
         adjust_blinds_button.connect("clicked", self.open_blind_adjustment_window)
-        adjust_blinds_button.connect("enter-notify-event", self.on_hover)
-        adjust_blinds_button.connect("leave-notify-event", self.on_leave)
         adjust_blinds_button.get_style_context().add_class("button-custom")
         self.fixed.put(adjust_blinds_button, 30, 20)
 
@@ -116,8 +114,6 @@ class AdminWindow(Gtk.Window):
         blinds_times_button = Gtk.Button(label="Blinds Zeiten")
         blinds_times_button.set_size_request(165, 40)
         blinds_times_button.connect("clicked", self.open_timer_setting_window)
-        blinds_times_button.connect("enter-notify-event", self.on_hover)
-        blinds_times_button.connect("leave-notify-event", self.on_leave)
         blinds_times_button.get_style_context().add_class("button-custom")
         self.fixed.put(blinds_times_button, 30, 120)
 
@@ -139,8 +135,6 @@ class AdminWindow(Gtk.Window):
         player_position_button = Gtk.Button(label="Spielerplatzierung")
         player_position_button.set_size_request(165, 40)
         player_position_button.connect("clicked", self.open_player_position_window)
-        player_position_button.connect("enter-notify-event", self.on_hover)
-        player_position_button.connect("leave-notify-event", self.on_leave)
         player_position_button.get_style_context().add_class("button-custom")
         self.fixed.put(player_position_button, 605, 20)
 
@@ -148,8 +142,6 @@ class AdminWindow(Gtk.Window):
         chip_value_admin_button = Gtk.Button(label="Chipwerte anpassen")
         chip_value_admin_button.set_size_request(165, 40)
         chip_value_admin_button.connect("clicked", self.open_chip_value_admin_window)
-        chip_value_admin_button.connect("enter-notify-event", self.on_hover)
-        chip_value_admin_button.connect("leave-notify-event", self.on_leave)
         chip_value_admin_button.get_style_context().add_class("button-custom")
         self.fixed.put(chip_value_admin_button, 605, 120)  # Unter Spielerplatzierung
 
@@ -538,24 +530,7 @@ class AdminWindow(Gtk.Window):
         # (Rest der Methode wie im Original)
         self.close()
 
-    def on_hover(self, widget, event):
-        # (Rest der Methode wie im Original)
-        widget.get_style_context().add_class("hovered")
-        if hasattr(self, 'hover_timer') and self.hover_timer:
-            GLib.source_remove(self.hover_timer)
-        self.hover_timer = GLib.timeout_add(500, self.remove_hover_effect, widget)
 
-    def on_leave(self, widget, event):
-        # (Rest der Methode wie im Original)
-        if hasattr(self, 'hover_timer') and self.hover_timer:
-            GLib.source_remove(self.hover_timer)
-        self.hover_timer = GLib.timeout_add(200, self.remove_hover_effect, widget)
-
-    def remove_hover_effect(self, widget):
-        # (Rest der Methode wie im Original)
-        widget.get_style_context().remove_class("hovered")
-        self.hover_timer = None
-        return False
 
     def on_key_press(self, widget, event):
         # (Rest der Methode wie im Original)
