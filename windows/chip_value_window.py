@@ -89,6 +89,7 @@ class ChipValueWindow(Gtk.Window):
             chip_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             chip_card.get_style_context().add_class("chip-card")
             chip_card.set_halign(Gtk.Align.CENTER)
+            chip_card.set_size_request(140, -1)  # Feste Breite für einheitliche Optik
             
             # Image
             chip_path = os.path.join("Chips", chip_file)
