@@ -251,32 +251,67 @@ class PokerInterface(Gtk.Window):
         self.buttons_hbox.pack_start(right_buttons, False, False, 0)
 
     def on_leave_button_clicked(self, button):
-        dialog = Gtk.MessageDialog(
-            transient_for=self,
-            flags=0,
-            message_type=Gtk.MessageType.QUESTION,
-            buttons=Gtk.ButtonsType.YES_NO,
-            text="Platz verlassen bestätigen?"
-        )
-        dialog.format_secondary_text("Möchten Sie wirklich Ihren Platz verlassen?")
-        response = dialog.run()
-        dialog.destroy()
-        if response == Gtk.ResponseType.YES:
+        # Zeige einen Custom Dialog anstatt des nativen GTK-Dialogs
+        dialog = Gtk.Window(title="Platz verlassen")
+        dialog.set_transient_for(self)
+        dialog.set_modal(True)
+        dialog.set_default_size(450, 250)
+        dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
+        dialog.set_decorated(False)
+        
+        # Hintergrund transparent/schattiert machen
+        dialog.set_app_paintable(True)
+        
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        box.set_margin_top(40)
+        box.set_margin_bottom(40)
+        box.set_margin_left(40)
+        box.set_margin_right(40)
+        box.get_style_context().add_class("glass-panel")
+        
+        lbl_title = Gtk.Label(label="Sitzplatz aufgeben?")
+        lbl_title.get_style_context().add_class("time-title")
+        box.pack_start(lbl_title, False, False, 0)
+        
+        lbl_desc = Gtk.Label()
+        lbl_desc.set_markup("<span size='16000' color='#ffffff'>Möchten Sie den Tisch wirklich verlassen?</span>")
+        box.pack_start(lbl_desc, False, False, 10)
+        
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+        btn_box.set_halign(Gtk.Align.CENTER)
+        
+        btn_yes = Gtk.Button(label="Ja, verlassen")
+        btn_yes.set_size_request(150, 45)
+        btn_yes.get_style_context().add_class("button-custom")
+        btn_yes.get_style_context().add_class("reset-button") # Rote Farbe für destruktive Aktion
+        
+        btn_no = Gtk.Button(label="Abbrechen")
+        btn_no.set_size_request(150, 45)
+        btn_no.get_style_context().add_class("button-custom")
+        
+        btn_box.pack_start(btn_no, False, False, 0)
+        btn_box.pack_start(btn_yes, False, False, 0)
+        box.pack_start(btn_box, False, False, 10)
+        
+        dialog.add(box)
+        
+        def on_yes(btn):
             print("Platz wird verlassen.")
-            # Speichere den aktuellen Namen in einer lokalen Variable
             name_to_leave = self.player_name
-            # Sende den Leave-Request mit dem korrekten Namen an den Server
             asyncio.run_coroutine_threadsafe(self.ws_client.send_leave_message(name_to_leave), self.ws_client.loop)
-            # Entferne den Namen aus der Info-Tabelle und lösche den gespeicherten Namen
             self.player_name_label.set_text("")
             self.player_name = None
-            # Deaktiviere alle Buttons, sodass der Benutzer nur noch den Namenseingabe-Bildschirm verwenden kann
             self.disable_buttons()
-            # Blende den Namenseingabe-Bildschirm erneut ein
             self.create_welcome_screen()
-        else:
-            # Falls abgebrochen, passiert nichts
-            pass
+            dialog.destroy()
+            
+        def on_no(btn):
+            dialog.destroy()
+            
+        btn_yes.connect("clicked", on_yes)
+        btn_no.connect("clicked", on_no)
+        
+        dialog.show_all()
 
     async def send_join_message(self):
         """Sendet eine Join-Nachricht mit dem Namen an den Server."""

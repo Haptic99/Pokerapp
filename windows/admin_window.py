@@ -397,9 +397,9 @@ class AdminWindow(Gtk.Window):
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
         # Hole einmalig initial die Daten über den bestehenden WebSocket
-        if hasattr(self.poker_interface, "ws_client") and self.poker_interface.ws_client.websocket:
+        if hasattr(self.poker_interface, "ws_client") and self.poker_interface.ws_client:
             asyncio.run_coroutine_threadsafe(
-                self.poker_interface.ws_client.websocket.send(json.dumps({"command": "get_status"})),
+                self.poker_interface.ws_client.send_message({"command": "get_status"}),
                 self.poker_interface.loop
             )
 
