@@ -83,10 +83,10 @@ class PlayerPositionWindow(Gtk.Window):
     def initialize_player_positions(self):
         """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges')."""
         center_x, center_y = 387.1, 228
-        # Plätze enger zusammengezogen, da der Tisch jetzt kleiner ist
+        # Die alten, weiter auseinander liegenden Koordinaten wiederhergestellt
         self.positions = [
-            (0, 140), (-210, 95), (-265, 0), (-210, -95),
-            (0, -140), (210, -95), (265, 0), (210, 95)
+            (0, 160), (-250, 110), (-310, 0), (-250, -110),
+            (0, -160), (250, -110), (310, 0), (250, 110)
         ]
         self.player_labels = []
         for i, (x, y) in enumerate(self.positions):
