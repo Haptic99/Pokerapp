@@ -92,6 +92,14 @@ class PokerInterface(Gtk.Window):
         self.name_button.connect("clicked", self.open_virtual_keyboard)
         self.welcome_box.pack_start(self.name_button, True, True, 0)
 
+        # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
+        weiter_button = Gtk.Button(label="Weiter")
+        weiter_button.connect("clicked", self.on_start_button_clicked)
+        self.welcome_box.pack_start(weiter_button, True, True, 0)
+
+        self.overlay.add_overlay(self.welcome_box)
+        self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
+
     def open_virtual_keyboard(self, button):
         current_text = button.get_label()
         if current_text == "Name eingeben...":
@@ -104,14 +112,6 @@ class PokerInterface(Gtk.Window):
             self.name_button.set_label(name)
         else:
             self.name_button.set_label("Name eingeben...")
-
-        # Button "Weiter" – speichert den Namen und entfernt den Bildschirm
-        weiter_button = Gtk.Button(label="Weiter")
-        weiter_button.connect("clicked", self.on_start_button_clicked)
-        self.welcome_box.pack_start(weiter_button, True, True, 0)
-
-        self.overlay.add_overlay(self.welcome_box)
-        self.welcome_box.show_all()  # WICHTIG: Widget sichtbar machen
 
     def on_start_button_clicked(self, button):
         """Wird ausgeführt, wenn der Benutzer seinen Namen eingegeben hat."""
