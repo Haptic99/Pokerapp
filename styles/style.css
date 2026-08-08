@@ -280,6 +280,9 @@ treeview header button {
 }
 
 /* --- COMBOBOX --- */
+combobox {
+    -GtkComboBox-appears-as-list: 1;
+}
 combobox button {
     background-image: linear-gradient(to bottom, rgba(40,50,65,0.9), rgba(20,30,45,0.9));
     color: white;

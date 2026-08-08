@@ -32,8 +32,14 @@ class BlindAdjustmentWindow(Gtk.Window):
 
         self.confirm_callback = confirm_callback
         
-        # State
-        self.current_start_blind = "5"
+        # State - initialisiere mit dem aktuell aktiven Small Blind
+        current_sb = BlindData.small_blind if BlindData.small_blind else "5"
+        try:
+            float(current_sb)
+            self.current_start_blind = str(current_sb)
+        except ValueError:
+            self.current_start_blind = "5"
+            
         self.strategies = {
             "Standard-Turnier": self.generate_standard_schedule,
             "Immer Verdoppeln": self.generate_doubling_schedule
@@ -70,7 +76,7 @@ class BlindAdjustmentWindow(Gtk.Window):
         lbl_start.get_style_context().add_class("time-title")
         self.fixed.put(lbl_start, 30, 110)
 
-        self.label_start_blind = Gtk.Label(label=f"{int(self.current_start_blind):02}")
+        self.label_start_blind = Gtk.Label(label=self.current_start_blind)
         self.label_start_blind.get_style_context().add_class("time-value")
         self.label_start_blind.get_style_context().add_class("time-selected")
         
@@ -207,14 +213,27 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.regenerate_schedule()
 
     def on_numpad_number(self, button, digit):
+        new_value_str = ""
         if self.current_start_blind == "0":
-            self.current_start_blind = digit
+            new_value_str = digit
         else:
-            self.current_start_blind += digit
+            new_value_str = self.current_start_blind + digit
             
-        if len(self.current_start_blind) > 6: # Max 9999.9
-            self.current_start_blind = self.current_start_blind[:6]
+        # Überprüfen auf maximal 2 Dezimalstellen
+        if "." in new_value_str:
+            parts = new_value_str.split(".")
+            if len(parts) > 1 and len(parts[1]) > 2:
+                return # Ignoriere die Eingabe, da schon 2 Dezimalstellen
+                
+        # Überprüfen auf Maximalwert 100'000
+        try:
+            val = float(new_value_str)
+            if val > 100000.0:
+                return # Ignoriere die Eingabe, da zu hoch
+        except ValueError:
+            return
             
+        self.current_start_blind = new_value_str
         self.update_start_blind_display()
         self.regenerate_schedule()
 
