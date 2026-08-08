@@ -381,6 +381,11 @@ scrollbar.vertical {
     box-shadow: 0px 0px 15px rgba(212, 175, 55, 0.3);
 }
 
+/* --- OVERLAYS --- */
+.dimmed-background {
+    background-color: rgba(0, 0, 0, 0.75); /* Dunkelt den Hintergrund für Popups massiv ab */
+}
+
 .chip-value-text {
     color: #4CAF50;
     font-size: 16px;
