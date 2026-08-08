@@ -46,6 +46,7 @@ class BlindAdjustmentWindow(Gtk.Window):
         }
         self.current_strategy = "Standard-Turnier"
         self.generated_schedule = []
+        self.is_first_input = True
 
         self.create_left_panel()
         self.create_right_panel()
@@ -213,6 +214,10 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.regenerate_schedule()
 
     def on_numpad_number(self, button, digit):
+        if self.is_first_input:
+            self.current_start_blind = ""
+            self.is_first_input = False
+            
         new_value_str = ""
         if self.current_start_blind == "0":
             new_value_str = digit
@@ -238,6 +243,10 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.regenerate_schedule()
 
     def on_numpad_dot(self, button):
+        if self.is_first_input:
+            self.current_start_blind = "0"
+            self.is_first_input = False
+            
         if "." not in self.current_start_blind:
             if not self.current_start_blind:
                 self.current_start_blind = "0."
@@ -247,11 +256,13 @@ class BlindAdjustmentWindow(Gtk.Window):
             self.regenerate_schedule()
 
     def on_numpad_clear(self, button):
+        self.is_first_input = False
         self.current_start_blind = ""
         self.update_start_blind_display()
         self.regenerate_schedule()
 
     def on_numpad_backspace(self, button):
+        self.is_first_input = False
         if len(self.current_start_blind) > 1:
             self.current_start_blind = self.current_start_blind[:-1]
         else:
