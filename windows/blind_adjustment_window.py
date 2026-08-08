@@ -61,6 +61,8 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.combo_strategy.set_active(0)
         self.combo_strategy.connect("changed", self.on_strategy_changed)
         self.combo_strategy.set_size_request(220, 40)
+        # Dropdown im Button-Look stylen
+        self.combo_strategy.get_style_context().add_class("button-custom")
         self.fixed.put(self.combo_strategy, 30, 50)
 
         # Start Blind Eingabe
@@ -108,18 +110,16 @@ class BlindAdjustmentWindow(Gtk.Window):
 
     def create_right_panel(self):
         # Vorschau-Titel
-        lbl_preview = Gtk.Label(label="Turnier-Fahrplan (nächste 20 Runden):")
+        lbl_preview = Gtk.Label(label="Turnier-Fahrplan:")
         lbl_preview.get_style_context().add_class("time-title")
         self.fixed.put(lbl_preview, 300, 20)
 
         # TreeView für Tabelle
         self.liststore = Gtk.ListStore(str, str, str) # Level, SB, BB
         self.treeview = Gtk.TreeView(model=self.liststore)
-        self.treeview.get_style_context().add_class("glass-panel")
         
         for i, column_title in enumerate(["Runde", "Small Blind", "Big Blind"]):
             renderer = Gtk.CellRendererText()
-            # Stylen der Zellen via Code, da CSS für TreeView komplex ist
             renderer.set_property("font", "Arial 16")
             renderer.set_property("foreground", "white")
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
@@ -130,8 +130,11 @@ class BlindAdjustmentWindow(Gtk.Window):
         scroll.set_size_request(460, 330)
         scroll.add(self.treeview)
         
-        # Dunkler Hintergrund für die Liste
-        # scroll.get_style_context().add_class("glass-panel") 
+        # Touch-Scrolling aktivieren (Kinetic Scrolling)
+        scroll.set_kinetic_scrolling(True)
+        
+        # Dunkler Hintergrund für die Liste im Glas-Look
+        scroll.get_style_context().add_class("glass-panel") 
         self.fixed.put(scroll, 300, 50)
 
         # Buttons

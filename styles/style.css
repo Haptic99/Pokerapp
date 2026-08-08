@@ -144,6 +144,17 @@ GtkEventBox {
     padding: 8px;
 }
 
+/* Transparenz für TreeViews innerhalb eines glass-panels */
+treeview {
+    background-color: transparent;
+}
+treeview header button {
+    background-image: linear-gradient(to bottom, rgba(40,50,65,0.9), rgba(20,30,45,0.9));
+    color: #D4AF37;
+    font-weight: bold;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
 /* Tabellenzellen-Stil ohne harten Rahmen (ersetzt alte table-cell) */
 .table-cell-transparent {
     background-color: transparent;
