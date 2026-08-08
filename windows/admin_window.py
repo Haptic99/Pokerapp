@@ -393,7 +393,7 @@ class AdminWindow(Gtk.Window):
             self.player_window.present()
             return
 
-        self.player_window = PlayerPositionWindow([])
+        self.player_window = PlayerPositionWindow(self, [])
         self.player_window.connect("destroy", self.on_player_window_closed)
         self.player_window.show_all()
         self.update_player_window()

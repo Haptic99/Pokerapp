@@ -6,9 +6,16 @@ gi.require_version('Gtk', '3.0')
 
 
 class PlayerPositionWindow(Gtk.Window):
-    def __init__(self, players):
+    def __init__(self, parent, players):
         super().__init__(title="Spielerplatzierung")
         self.set_default_size(800, 480)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+        
+        self.is_fullscreen_mode = False
+        if hasattr(parent, 'is_fullscreen_mode') and parent.is_fullscreen_mode:
+            self.fullscreen()
+            self.is_fullscreen_mode = True
 
         # Signal zum Schließen des Fensters
         self.connect("destroy", self.on_close)
@@ -27,9 +34,6 @@ class PlayerPositionWindow(Gtk.Window):
 
         # Pokertisch hinzufügen (grüne Matte)
         self.add_pokertisch()
-
-        # Variable zum Speichern des Vollbildstatus
-        self.is_fullscreen_mode = False
 
         # Key-Press-Event verbinden
         self.connect("key-press-event", self.on_key_press)
