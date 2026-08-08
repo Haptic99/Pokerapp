@@ -10,9 +10,20 @@ from data.game_time_data import GameTimeData  # Spielzeit-Daten
 from data.round_data import RoundData
 from data.chip_data import ChipData
 
-# Lokale IP-Adresse ermitteln
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Dummy-Verbindung (muss nicht existieren), um die LAN-IP herauszufinden
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
 hostname = socket.gethostname()
-local_ip = socket.gethostbyname(hostname)
+local_ip = get_local_ip()
 
 # Zeroconf-Dienstinformationen
 service_type = "_poker._tcp.local."
