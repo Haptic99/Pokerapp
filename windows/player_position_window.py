@@ -84,8 +84,8 @@ class PlayerPositionWindow(Gtk.Window):
         """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges')."""
         center_x, center_y = 400, 240
         self.positions = [
-            (0, 140), (-270, 125), (-340, 0), (-270, -115),
-            (0, -130), (270, -115), (340, 0), (270, 125)
+            (0, 160), (-250, 110), (-310, 0), (-250, -110),
+            (0, -160), (250, -110), (310, 0), (250, 110)
         ]
         self.player_labels = []
         for i, (x, y) in enumerate(self.positions):
@@ -99,8 +99,10 @@ class PlayerPositionWindow(Gtk.Window):
             # Ausrichtung auf dem Overlay
             badge_box.set_halign(Gtk.Align.START)
             badge_box.set_valign(Gtk.Align.START)
-            badge_box.set_margin_top(adjusted_y - 30)
-            badge_box.set_margin_left(adjusted_x - 55)
+            # -70 zentriert horizontal (da max-width 140px ist)
+            # -25 zentriert vertikal (halbe Höhe)
+            badge_box.set_margin_top(adjusted_y - 25)
+            badge_box.set_margin_left(adjusted_x - 70)
             
             # 1. Sitz-Nummer (z.B. "Sitz 1")
             lbl_seat = Gtk.Label(label=f"Sitz {i+1}")
@@ -129,7 +131,11 @@ class PlayerPositionWindow(Gtk.Window):
         """Aktualisiert die Spielerplätze basierend auf der Spielerliste."""
         for i, (badge_box, lbl_name, lbl_status) in enumerate(self.player_labels):
             if i < len(players):
-                lbl_name.set_text(players[i])
+                name = players[i]
+                # Damit ein langer Name das Layout nicht sprengt
+                if len(name) > 13:
+                    name = name[:11] + "..."
+                lbl_name.set_text(name)
                 lbl_status.set_text("Verbunden")
                 
                 # Active styling

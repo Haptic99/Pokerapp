@@ -102,7 +102,8 @@ GtkEventBox {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     padding: 6px 12px;
-    min-width: 110px;
+    min-width: 140px;
+    max-width: 140px;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
     transition: all 0.3s ease;
 }

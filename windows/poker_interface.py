@@ -251,16 +251,17 @@ class PokerInterface(Gtk.Window):
         self.buttons_hbox.pack_start(right_buttons, False, False, 0)
 
     def on_leave_button_clicked(self, button):
-        # Zeige einen Custom Dialog anstatt des nativen GTK-Dialogs
-        dialog = Gtk.Window(title="Platz verlassen")
-        dialog.set_transient_for(self)
-        dialog.set_modal(True)
-        dialog.set_default_size(450, 250)
-        dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
-        dialog.set_decorated(False)
+        # Zeige ein Overlay anstatt eines separaten Fensters
+        self.leave_container = Gtk.EventBox()
+        self.leave_container.set_name("leave_container")
+        self.leave_container.set_halign(Gtk.Align.FILL)
+        self.leave_container.set_valign(Gtk.Align.FILL)
+        self.leave_container.get_style_context().add_class("dimmed-background")
         
-        # Hintergrund transparent/schattiert machen
-        dialog.set_app_paintable(True)
+        # Zentrier-Box, damit das Panel in der Mitte sitzt
+        center_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        center_box.set_halign(Gtk.Align.CENTER)
+        center_box.set_valign(Gtk.Align.CENTER)
         
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
         box.set_margin_top(40)
@@ -293,7 +294,8 @@ class PokerInterface(Gtk.Window):
         btn_box.pack_start(btn_yes, False, False, 0)
         box.pack_start(btn_box, False, False, 10)
         
-        dialog.add(box)
+        center_box.pack_start(box, False, False, 0)
+        self.leave_container.add(center_box)
         
         def on_yes(btn):
             print("Platz wird verlassen.")
@@ -302,16 +304,22 @@ class PokerInterface(Gtk.Window):
             self.player_name_label.set_text("")
             self.player_name = None
             self.disable_buttons()
+            
+            # Overlay entfernen
+            self.leave_container.destroy()
+            self.leave_container = None
+            
             self.create_welcome_screen()
-            dialog.destroy()
             
         def on_no(btn):
-            dialog.destroy()
+            self.leave_container.destroy()
+            self.leave_container = None
             
         btn_yes.connect("clicked", on_yes)
         btn_no.connect("clicked", on_no)
         
-        dialog.show_all()
+        self.overlay.add_overlay(self.leave_container)
+        self.leave_container.show_all()
 
     async def send_join_message(self):
         """Sendet eine Join-Nachricht mit dem Namen an den Server."""
