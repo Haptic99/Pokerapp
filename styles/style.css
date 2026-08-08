@@ -90,6 +90,52 @@ GtkEventBox {
     font-size: 13px;
 }
 
+.time-input-group label {
+    color: #D4AF37;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* --- SPIELERPLATZ-KARTEN (Player Position Screen) --- */
+.seat-badge {
+    background-color: rgba(20, 30, 45, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px 12px;
+    min-width: 110px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+.seat-badge-active {
+    background-color: rgba(15, 25, 40, 0.9);
+    border: 1px solid rgba(212, 175, 55, 0.8);
+    box-shadow: 0px 0px 10px rgba(212, 175, 55, 0.4);
+}
+
+.seat-number {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.seat-badge-active .seat-number {
+    color: #D4AF37;
+}
+
+.seat-status {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-style: italic;
+}
+
+.seat-status-active {
+    color: #4CAF50; /* Grün für Verbunden */
+    font-style: normal;
+    font-weight: bold;
+}
+
 /* --- BUTTONS --- */
 .button-custom {
     background-image: linear-gradient(to bottom, rgba(40,50,65,0.9), rgba(20,30,45,0.9));

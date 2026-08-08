@@ -78,30 +78,67 @@ class PlayerPositionWindow(Gtk.Window):
         self.overlay.add_overlay(pokertisch_image)
 
     def initialize_player_positions(self):
-        """Initialisiert alle Spielerpositionen mit 'Nicht belegt'."""
+        """Initialisiert alle Spielerpositionen mit Platz-Karten ('Badges')."""
         center_x, center_y = 400, 240
         self.positions = [
             (0, 140), (-270, 125), (-340, 0), (-270, -115),
             (0, -130), (270, -115), (340, 0), (270, 125)
         ]
         self.player_labels = []
-        for x, y in self.positions:
+        for i, (x, y) in enumerate(self.positions):
             adjusted_x = x + center_x
             adjusted_y = y + center_y
-            player_label = Gtk.Label(label="Nicht belegt")
-            player_label.set_name("player-label")
-            player_label.get_style_context().add_class("player-name")
-            player_label.set_xalign(0)
-            player_label.set_yalign(0)
-            player_label.set_margin_top(adjusted_y - 15)
-            player_label.set_margin_left(adjusted_x - 25)
-            self.overlay.add_overlay(player_label)
-            self.player_labels.append(player_label)
+            
+            # Hauptcontainer für die Platz-Karte
+            badge_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            badge_box.get_style_context().add_class("seat-badge")
+            
+            # Ausrichtung auf dem Overlay
+            badge_box.set_halign(Gtk.Align.START)
+            badge_box.set_valign(Gtk.Align.START)
+            badge_box.set_margin_top(adjusted_y - 30)
+            badge_box.set_margin_left(adjusted_x - 55)
+            
+            # 1. Sitz-Nummer (z.B. "Sitz 1")
+            lbl_seat = Gtk.Label(label=f"Sitz {i+1}")
+            lbl_seat.get_style_context().add_class("seat-number")
+            lbl_seat.set_xalign(0.5)
+            badge_box.pack_start(lbl_seat, False, False, 0)
+            
+            # 2. Spieler-Name
+            lbl_name = Gtk.Label(label="Nicht belegt")
+            lbl_name.get_style_context().add_class("player-name")
+            lbl_name.set_xalign(0.5)
+            badge_box.pack_start(lbl_name, False, False, 0)
+            
+            # 3. Geräte-Status (Placeholder für später)
+            lbl_status = Gtk.Label(label="Wartet...")
+            lbl_status.get_style_context().add_class("seat-status")
+            lbl_status.set_xalign(0.5)
+            badge_box.pack_start(lbl_status, False, False, 0)
+            
+            self.overlay.add_overlay(badge_box)
+            
+            # Wir speichern die UI-Elemente, um sie später updaten zu können
+            self.player_labels.append((badge_box, lbl_name, lbl_status))
 
     def update_player_positions(self, players):
         """Aktualisiert die Spielerplätze basierend auf der Spielerliste."""
-        for i, player_label in enumerate(self.player_labels):
-            player_label.set_text(players[i] if i < len(players) else "Nicht belegt")
+        for i, (badge_box, lbl_name, lbl_status) in enumerate(self.player_labels):
+            if i < len(players):
+                lbl_name.set_text(players[i])
+                lbl_status.set_text("Verbunden")
+                
+                # Active styling
+                badge_box.get_style_context().add_class("seat-badge-active")
+                lbl_status.get_style_context().add_class("seat-status-active")
+            else:
+                lbl_name.set_text("Nicht belegt")
+                lbl_status.set_text("Wartet...")
+                
+                # Remove active styling
+                badge_box.get_style_context().remove_class("seat-badge-active")
+                lbl_status.get_style_context().remove_class("seat-status-active")
 
     def add_close_button(self):
         """Fügt einen Schließen-Button hinzu."""
