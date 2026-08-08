@@ -10,6 +10,11 @@ from data.game_time_data import GameTimeData  # Spielzeit-Daten
 from data.round_data import RoundData
 from data.chip_data import ChipData
 
+try:
+    from gpiozero import Button
+except ImportError:
+    Button = None
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -230,7 +235,53 @@ async def broadcast_status():
             clients.remove(client)
 
 
+def advance_round_hardware():
+    """Wird aufgerufen, wenn der physische Hardware-Button gedrückt wird."""
+    print("[HARDWARE] Button gedrückt! Nächste Runde wird eingeleitet...")
+    
+    # 1. Runde erhöhen
+    current_round = RoundData.count if RoundData.count is not None else 0
+    RoundData.count = current_round + 1
+    
+    # 2. Blinds erhöhen
+    BlindData.current_level_index += 1
+    if BlindData.current_level_index >= len(BlindData.BLIND_SCHEDULE):
+        BlindData.current_level_index = len(BlindData.BLIND_SCHEDULE) - 1 # Auf höchstem Level bleiben
+        
+    sb, bb = BlindData.BLIND_SCHEDULE[BlindData.current_level_index]
+    BlindData.small_blind = str(sb)
+    BlindData.big_blind = str(bb)
+    
+    # 3. Timer zurücksetzen und starten
+    # Falls noch nie eine Zeit eingestellt wurde, Standardwert 15 Minuten setzen
+    if TimerData.start_minute is None:
+        TimerData.start_minute = 15
+        TimerData.start_second = 0
+        
+    TimerData.minute = TimerData.start_minute
+    TimerData.second = TimerData.start_second
+    TimerData.is_running = True
+    TimerData.is_paused = False
+
+
+def setup_hardware_button():
+    """Initialisiert den GPIO-Button, falls auf einem Raspberry Pi ausgeführt."""
+    if Button is not None:
+        try:
+            # GPIO 21 (Pin 40 am Raspberry Pi)
+            btn = Button(21, pull_up=True, bounce_time=0.3)
+            btn.when_pressed = advance_round_hardware
+            print("✅ Hardware-Button auf GPIO 21 initialisiert.")
+            return btn
+        except Exception as e:
+            print(f"⚠ Konnte Hardware-Button nicht initialisieren: {e}")
+    else:
+        print("⚠ gpiozero nicht verfügbar (vermutlich Windows). Hardware-Button deaktiviert.")
+    return None
+
+
 async def main():
+    hw_button = setup_hardware_button()
     try:
         async with websockets.serve(handle_client, "0.0.0.0", port):
             print(f"Poker-Server läuft auf Port {port}")
