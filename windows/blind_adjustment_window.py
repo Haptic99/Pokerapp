@@ -135,16 +135,26 @@ class BlindAdjustmentWindow(Gtk.Window):
             column.set_min_width(140)
             self.treeview.append_column(column)
 
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_size_request(460, 330)
-        scroll.add(self.treeview)
+        # Touch/Drag-Scrolling manuell implementieren
+        self.treeview.add_events(Gdk.EventMask.BUTTON_PRESS_MASK |
+                                 Gdk.EventMask.BUTTON_RELEASE_MASK |
+                                 Gdk.EventMask.POINTER_MOTION_MASK)
+        self.treeview.connect("button-press-event", self.on_treeview_button_press)
+        self.treeview.connect("button-release-event", self.on_treeview_button_release)
+        self.treeview.connect("motion-notify-event", self.on_treeview_motion)
         
-        # Touch-Scrolling aktivieren (Kinetic Scrolling)
-        scroll.set_kinetic_scrolling(True)
+        self.drag_start_y = None
+        self.drag_start_vadj = None
+
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.set_size_request(460, 330)
+        # Versteckt den Scrollbalken komplett (EXTERNAL bedeutet: wir steuern es manuell)
+        self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
+        self.scroll.add(self.treeview)
         
         # Dunkler Hintergrund für die Liste im Glas-Look
-        scroll.get_style_context().add_class("glass-panel") 
-        self.fixed.put(scroll, 300, 50)
+        self.scroll.get_style_context().add_class("glass-panel") 
+        self.fixed.put(self.scroll, 300, 50)
 
         # Buttons
         btn_apply = Gtk.Button(label="Plan übernehmen")
@@ -160,6 +170,27 @@ class BlindAdjustmentWindow(Gtk.Window):
         self.fixed.put(btn_close, 610, 400)
 
     # --- Logic ---
+
+    def on_treeview_button_press(self, widget, event):
+        if event.button == 1:  # Linker Mausklick / Touch
+            self.drag_start_y = event.y_root
+            self.drag_start_vadj = self.scroll.get_vadjustment().get_value()
+        return False
+
+    def on_treeview_button_release(self, widget, event):
+        if event.button == 1:
+            self.drag_start_y = None
+        return False
+
+    def on_treeview_motion(self, widget, event):
+        if self.drag_start_y is not None:
+            # Distanz berechnen (wie weit der Finger gewischt wurde)
+            dy = self.drag_start_y - event.y_root
+            vadj = self.scroll.get_vadjustment()
+            # Scrollbalken-Wert anpassen (Tabelle nach oben/unten verschieben)
+            vadj.set_value(self.drag_start_vadj + dy)
+            return True # Event konsumieren, damit beim Wischen keine Zeilen markiert werden
+        return False
 
     def on_strategy_changed(self, combo):
         self.current_strategy = combo.get_active_text()
