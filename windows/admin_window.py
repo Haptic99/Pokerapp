@@ -184,6 +184,7 @@ class AdminWindow(Gtk.Window):
     def create_rounds_table(self):
         from data.round_data import RoundData
         self.rounds_table = Gtk.Grid()
+        self.rounds_table.get_style_context().add_class("glass-panel")
         self.rounds_table.set_row_spacing(5)
         self.rounds_table.set_column_spacing(10)
         self.rounds_table.set_margin_top(10)
@@ -211,19 +212,19 @@ class AdminWindow(Gtk.Window):
             label_title.set_margin_left(6)
             label_value.set_xalign(1.0)
             label_value.set_margin_right(6)
-            label_title.get_style_context().add_class("green-text")
-            label_value.get_style_context().add_class("green-text")
+            label_title.get_style_context().add_class("accent-text")
+            label_value.get_style_context().add_class("accent-text")
 
             # Speichere die Labels, damit sie später aktualisiert werden können
             self.rounds_labels[title] = label_value
 
             frame_title = Gtk.Frame()
             frame_title.add(label_title)
-            frame_title.get_style_context().add_class("table-cell")
+            frame_title.get_style_context().add_class("table-cell-transparent")
 
             frame_value = Gtk.Frame()
             frame_value.add(label_value)
-            frame_value.get_style_context().add_class("table-cell")
+            frame_value.get_style_context().add_class("table-cell-transparent")
 
             self.rounds_table.attach(frame_title, 0, row, 1, 1)
             self.rounds_table.attach(frame_value, 1, row, 1, 1)
@@ -253,6 +254,7 @@ class AdminWindow(Gtk.Window):
     def create_blinds_table(self):
         # (Rest der Methode wie im Original)
         self.blinds_table = Gtk.Grid()
+        self.blinds_table.get_style_context().add_class("glass-panel")
         self.blinds_table.set_row_spacing(5)
         self.blinds_table.set_column_spacing(10)
         self.blinds_table.set_margin_top(10)
@@ -277,17 +279,17 @@ class AdminWindow(Gtk.Window):
             label1.set_margin_left(6)
             label2.set_xalign(1.0)
             label2.set_margin_right(6)
-            label1.get_style_context().add_class("green-text")
-            label2.get_style_context().add_class("green-text")
+            label1.get_style_context().add_class("accent-text")
+            label2.get_style_context().add_class("accent-text")
             self.blind_labels[col1] = label2
 
             frame1 = Gtk.Frame()
             frame1.add(label1)
-            frame1.get_style_context().add_class("table-cell")
+            frame1.get_style_context().add_class("table-cell-transparent")
 
             frame2 = Gtk.Frame()
             frame2.add(label2)
-            frame2.get_style_context().add_class("table-cell")
+            frame2.get_style_context().add_class("table-cell-transparent")
 
             self.blinds_table.attach(frame1, 0, row, 1, 1)
             self.blinds_table.attach(frame2, 1, row, 1, 1)
@@ -298,6 +300,7 @@ class AdminWindow(Gtk.Window):
         # (Rest der Methode wie im Original)
         from data.game_time_data import GameTimeData
         self.game_time_table = Gtk.Grid()
+        self.game_time_table.get_style_context().add_class("glass-panel")
         self.game_time_table.set_row_spacing(5)
         self.game_time_table.set_column_spacing(10)
         self.game_time_table.set_margin_top(10)
@@ -326,19 +329,19 @@ class AdminWindow(Gtk.Window):
             label_title.set_margin_left(6)
             label_time.set_xalign(1.0)
             label_time.set_margin_right(6)
-            label_title.get_style_context().add_class("green-text")
-            label_time.get_style_context().add_class("green-text")
+            label_title.get_style_context().add_class("accent-text")
+            label_time.get_style_context().add_class("accent-text")
 
             # Speichere das Zeit-Label, damit es später aktualisiert werden kann
             self.game_time_labels[title] = label_time
 
             frame_title = Gtk.Frame()
             frame_title.add(label_title)
-            frame_title.get_style_context().add_class("table-cell")
+            frame_title.get_style_context().add_class("table-cell-transparent")
 
             frame_time = Gtk.Frame()
             frame_time.add(label_time)
-            frame_time.get_style_context().add_class("table-cell")
+            frame_time.get_style_context().add_class("table-cell-transparent")
 
             self.game_time_table.attach(frame_title, 0, row, 1, 1)
             self.game_time_table.attach(frame_time, 1, row, 1, 1)
@@ -349,6 +352,7 @@ class AdminWindow(Gtk.Window):
     def create_timer_table(self):
         # (Rest der Methode wie im Original)
         self.timer_table = Gtk.Grid()
+        self.timer_table.get_style_context().add_class("glass-panel")
         self.timer_table.set_row_spacing(5)
         self.timer_table.set_column_spacing(10)
         self.timer_table.set_margin_top(10)
@@ -371,19 +375,19 @@ class AdminWindow(Gtk.Window):
             label_title.set_margin_left(6)
             label_time.set_xalign(1.0)
             label_time.set_margin_right(6)
-            label_title.get_style_context().add_class("green-text")
-            label_time.get_style_context().add_class("green-text")
+            label_title.get_style_context().add_class("accent-text")
+            label_time.get_style_context().add_class("accent-text")
 
             # Speichere die Zeit-Labels in einem Dictionary, um sie später updaten zu können
             self.timer_labels[title] = label_time
 
             frame_title = Gtk.Frame()
             frame_title.add(label_title)
-            frame_title.get_style_context().add_class("table-cell")
+            frame_title.get_style_context().add_class("table-cell-transparent")
 
             frame_time = Gtk.Frame()
             frame_time.add(label_time)
-            frame_time.get_style_context().add_class("table-cell")
+            frame_time.get_style_context().add_class("table-cell-transparent")
 
             self.timer_table.attach(frame_title, 0, row, 1, 1)
             self.timer_table.attach(frame_time, 1, row, 1, 1)

@@ -2,252 +2,49 @@
 
 /* Hintergrund für das Poker Interface */
 #poker_interface {
-    background: #2b2b2b;
+    background: #111b2b; /* Dunkles Midnight Blue */
 }
 
-/* Begrüßungsbildschirm-Styling */
-#welcome_box {
-    background-color: rgba(255, 255, 255, 0.85); /* Semitransparenter Hintergrund */
-    border-radius: 15px; /* Abgerundete Ecken */
-    padding: 20px; /* Innenabstand */
-}
-
-
-/* Halbtransparenter Blocker für den Hintergrund */
-GtkEventBox {
-    background-color: rgba(0, 0, 0, 0.5); /* Halbtransparente Überlagerung */
-}
-
-
-.player-name {
-    color: white; /* Weiße Schrift */
-    font-weight: bold; /* Fettgedruckt */
-    font-size: 16px; /* Größere Schrift */
-}
-
-
-/* Simulierter halbtransparenter Effekt für den Hintergrund */
+/* Simulierter halbtransparenter Effekt für den Hintergrund des Main Windows */
 GtkWindow {
-    background: rgba(43, 43, 43, 0.7); /* Semitransparenter Hintergrund */
+    background: rgba(17, 27, 43, 0.7); /* Midnight Blue Overlay */
 }
 
-/* Allgemeine Stile für Buttons */
-.button-custom {
-    background-color: transparent;
-    background-image: linear-gradient(to bottom, #4e4e4e, #2e2e2e);
-    color: white;
-    font-weight: normal;
-    font-family: "Impact", fantasy;
-    border-style: solid;
-    border-width: 2px;
-    border-color: #CDAD00;
-    border-radius: 5px;
-    padding-left: 15px;
-    padding-right: 15px;
-    padding-top: 15px;
-    padding-bottom: 15px;
-    font-size: 15px;
-    font-weight: bold;
-    transition: all 200ms ease;
+/* Halbtransparenter Blocker für Dialoge */
+GtkEventBox {
+    background-color: rgba(0, 0, 0, 0.6); 
 }
 
-.button-custom:hover {
-    background-image: linear-gradient(to bottom, #5e5e5e, #3e3e3e);
-    border-color: #FFD700;
+/* Begrüßungsbildschirm-Styling (Glassmorphism) */
+#welcome_box {
+    background-color: rgba(30, 40, 50, 0.85); /* Dark Glass */
+    border: 1px solid rgba(212, 175, 55, 0.3); /* Goldener Schimmer */
+    border-radius: 20px; 
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
+    padding: 30px; 
 }
 
-/* Stile für Buttons im Spielzeitfenster*/
-.button-custom-spielzeit {
-    background-color: transparent;
-    color: white;
-    font-weight: normal;
-    font-family: "Impact", fantasy;
-    border-style: solid;
-    border-width: 2px;
-    border-color: #5e5e5e;
-    border-radius: 5px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    font-size: 25px;
-    font-weight: bold;
-}
-
-
-/* Textfarben für Labels */
-.red-text {
-    color: #CDAD00;
-    font-weight: bold;
-    font-family: "Impact", fantasy;
+/* Name-Eingabefeld */
+.entry-field {
     font-size: 16px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #D4AF37;
 }
 
-.green-text {
-    color: #9FB6CD;
-    font-weight: bold;
-    font-family: "Georgia", serif;
-    font-size: 14px;
+/* --- TEXT & TYPOGRAFIE --- */
+.player-name {
+    color: white; 
+    font-weight: bold; 
+    font-size: 18px; 
 }
 
-/* Spezielle Textstile für das Admin-Fenster */
-.red-text-Admin {
-    color: red;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.green-text-Admin {
-    color: green;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-/* Neue Klasse für fetten Text */
 .bold-text {
     font-weight: bold;
 }
 
-/* Tabellenzellen-Stil */
-.table-cell {
-    background-color: rgba(0, 0, 0, 0.5); /* Halbtransparenter Hintergrund */
-    padding: 0px;
-    font-weight: bold;
-}
-
-/* Neues linkes Padding für Zellen */
-.cell-label {
-    padding-left: 10px;
-    padding-right: 10px;
-}
-
-/* Zusätzliche Stile für Eingabefelder */
-.entry-field {
-    font-size: 14px;
-    padding: 5px;
-}
-
-/* Stil für Frames */
-.frame-style {
-    border: none;
-}
-
-/* Stil für Labels in Tabellen */
-.table-label {
-    padding: 5px;
-}
-
-/* Hintergrundfarbe für das Hauptfenster */
-.window-background {
-    background-color: #f0f0f0;
-}
-
-/* Stile für Grid und Fixed Layouts */
-.grid-style {
-    margin: 10px;
-}
-
-.fixed-style {
-    margin: 10px;
-}
-
-/* Stile für das NumPad-Fenster */
-.numpad-button {
-    background-color: #5e5e5e;
-    background-image: linear-gradient(to bottom, #4e4e4e, #2e2e2e);
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    border: 1px solid #CDAD00;
-    padding: 5px;
-    margin: 2px;
-    border-radius: 2.8px;
-}
-
-.numpad-button:hover {
-    background-image: linear-gradient(to bottom, #5e5e5e, #3e3e3e);
-}
-
-/* Stil für den 'Ok'-Button */
-.numpad-button-ok {
-    background-color: #4CAF50;
-    color: white;
-    font-size: 24px;
-    border-radius: 5px;
-}
-
-/* Stil für den '←'-Button */
-.numpad-button-backspace {
-    background-color: gray;
-    color: white;
-    font-size: 24px;
-    border-radius: 5px;
-}
-
-/* Stil für Blind-Titel */
-.blind-title {
-    font-size: 24px;
-    color: white;
-    margin-bottom: 5px;
-}
-
-/* Stil für Blind-Werte */
-.blind-value {
-    font-size: 36px;
-    color: white;
-}
-
-/* Stil für die Buttons um die Blind-Werte */
-.blind-button {
-    background-color: transparent;
-    border: none;
-    padding: 10px;
-}
-
-/* Hervorhebung des ausgewählten Blind-Werts */
-.blind-selected {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
-    padding: 5px;
-}
-
-/* Stil für Zeit-Titel */
-.time-title {
-    font-size: 24px;
-    color: white;
-    margin-bottom: 5px;
-}
-
-/* Stil für Zeit-Werte */
-.time-value {
-    font-size: 36px;
-    color: white;
-}
-
-.time-value.selected {
-    color: #FFD700;
-}
-
-/* Stil für die Buttons um die Zeit-Werte */
-.time-button {
-    background-color: transparent;
-    background-image: linear-gradient(to bottom, #2e2e2e, #1e1e1e);
-    border: 2px solid #CDAD00;
-    border-radius: 5px;
-    padding: 10px;
-}
-
-/* Hervorhebung des ausgewählten Zeit-Werts */
-.time-selected {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
-    padding: 5px;
-}
-
-.error {
-    background-color: #ffcccc; /* Helles Rot */
-    transition: background-color 0.5s;
-}
-
-/* Neue Stile hinzugefügt */
 .large-text {
     font-size: 24px;
     font-weight: bold;
@@ -257,12 +54,187 @@ GtkWindow {
     color: #FFFFFF;
 }
 
+/* Titel-Text (Golden) ersetzt das alte "red-text" */
+.primary-text {
+    color: #D4AF37; /* Luxuriöses Gold */
+    font-weight: bold;
+    font-family: sans-serif;
+    font-size: 16px;
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Info-Text (Platin/Weiß) ersetzt das alte "green-text" */
+.accent-text {
+    color: #F8F9FA; /* Strahlendes Weiß/Silber */
+    font-weight: bold;
+    font-family: sans-serif;
+    font-size: 15px;
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Spezielle Textstile für das Admin-Fenster */
+.red-text-Admin {
+    color: #FF4C4C;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.green-text-Admin {
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* --- BUTTONS --- */
+.button-custom {
+    background-image: linear-gradient(to bottom, rgba(40,50,65,0.9), rgba(20,30,45,0.9));
+    color: white;
+    font-family: sans-serif;
+    border-style: solid;
+    border-width: 1px;
+    border-color: rgba(212, 175, 55, 0.6); /* Gold-Rand */
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+    transition: all 200ms ease-in-out;
+}
+
+.button-custom:hover {
+    background-image: linear-gradient(to bottom, rgba(50,65,85,1.0), rgba(30,45,60,1.0));
+    border-color: #D4AF37;
+    box-shadow: 0px 0px 12px rgba(212, 175, 55, 0.6); /* Goldener Glow-Effekt */
+}
+
+/* Stile für riesige Buttons im Spielzeitfenster */
+.button-custom-spielzeit {
+    background-color: transparent;
+    color: #D4AF37;
+    font-weight: bold;
+    font-family: sans-serif;
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    border-radius: 15px;
+    padding: 15px;
+    font-size: 25px;
+}
+
 .reset-button {
-    background-image: linear-gradient(to bottom, #8B0000, #660000);
+    background-image: linear-gradient(to bottom, rgba(160,30,30,0.9), rgba(100,10,10,0.9));
     border-color: #FF6347;
 }
 
 .reset-button:hover {
-    background-image: linear-gradient(to bottom, #A00000, #770000);
-    border-color: #FF7F50;
+    background-image: linear-gradient(to bottom, rgba(190,40,40,1.0), rgba(130,20,20,1.0));
+    border-color: #FFA07A;
+    box-shadow: 0px 0px 12px rgba(255, 99, 71, 0.6);
+}
+
+/* --- TABELLEN & PANELS (Glassmorphism) --- */
+.glass-panel {
+    background-color: rgba(15, 25, 40, 0.7); /* Tiefes transparentes Blau */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.8);
+    padding: 10px;
+}
+
+/* Tabellenzellen-Stil ohne harten Rahmen (ersetzt alte table-cell) */
+.table-cell-transparent {
+    background-color: transparent;
+    border: none;
+    padding: 4px 8px;
+}
+
+.cell-label {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Stil für Frames */
+.frame-style {
+    border: none;
+}
+
+.table-label {
+    padding: 5px;
+}
+
+.grid-style {
+    margin: 10px;
+}
+
+.fixed-style {
+    margin: 10px;
+}
+
+/* --- NUMPAD --- */
+.numpad-button {
+    background-image: linear-gradient(to bottom, rgba(50,60,75,0.9), rgba(30,40,55,0.9));
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    padding: 5px;
+    margin: 2px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.4);
+}
+
+.numpad-button:hover {
+    background-image: linear-gradient(to bottom, rgba(70,85,100,1.0), rgba(45,60,75,1.0));
+    border-color: #D4AF37;
+}
+
+.numpad-button-ok {
+    background-image: linear-gradient(to bottom, rgba(46,139,87,0.9), rgba(34,100,60,0.9));
+    color: white;
+    font-size: 24px;
+    border-radius: 8px;
+    border: 1px solid #3CB371;
+}
+
+.numpad-button-backspace {
+    background-image: linear-gradient(to bottom, rgba(100,100,100,0.9), rgba(60,60,60,0.9));
+    color: white;
+    font-size: 24px;
+    border-radius: 8px;
+}
+
+/* --- BLIND & TIME ADJUSTMENT WINDOWS --- */
+.blind-title, .time-title {
+    font-size: 24px;
+    color: #D4AF37; /* Gold */
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.blind-value, .time-value {
+    font-size: 36px;
+    color: white;
+    font-weight: bold;
+}
+
+.time-value.selected {
+    color: #D4AF37;
+}
+
+.blind-button, .time-button {
+    background-color: rgba(30, 40, 50, 0.8);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.blind-selected, .time-selected {
+    background-color: rgba(212, 175, 55, 0.2);
+    border: 1px solid #D4AF37;
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0px 0px 10px rgba(212, 175, 55, 0.4);
+}
+
+.error {
+    background-color: rgba(255, 76, 76, 0.3);
+    transition: background-color 0.5s;
 }

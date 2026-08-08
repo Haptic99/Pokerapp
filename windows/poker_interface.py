@@ -285,6 +285,7 @@ class PokerInterface(Gtk.Window):
     def create_table_left(self):
         """Erstellt die linke Tabelle (z. B. Blinds und Timer)."""
         self.table_left = Gtk.Grid()
+        self.table_left.get_style_context().add_class("glass-panel")
 
         small_blind_value = BlindData.small_blind if BlindData.small_blind is not None else "-"
         big_blind_value = BlindData.big_blind if BlindData.big_blind is not None else "-"
@@ -309,23 +310,23 @@ class PokerInterface(Gtk.Window):
                 label1.set_xalign(0.5)
                 frame1 = Gtk.Frame()
                 frame1.add(label1)
-                frame1.get_style_context().add_class("table-cell")
-                frame1.get_style_context().add_class("red-text")
+                frame1.get_style_context().add_class("table-cell-transparent")
+                frame1.get_style_context().add_class("primary-text")
                 self.table_left.attach(frame1, 0, row, 2, 1)
             else:
                 label1.set_xalign(0.0)
                 label1.set_margin_left(6)
                 label2.set_xalign(1.0)
                 label2.set_margin_right(6)
-                label1.get_style_context().add_class("green-text")
-                label2.get_style_context().add_class("green-text")
+                label1.get_style_context().add_class("accent-text")
+                label2.get_style_context().add_class("accent-text")
                 self.left_labels[col1] = label2
                 frame1 = Gtk.Frame()
                 frame1.add(label1)
-                frame1.get_style_context().add_class("table-cell")
+                frame1.get_style_context().add_class("table-cell-transparent")
                 frame2 = Gtk.Frame()
                 frame2.add(label2)
-                frame2.get_style_context().add_class("table-cell")
+                frame2.get_style_context().add_class("table-cell-transparent")
                 self.table_left.attach(frame1, 0, row, 1, 1)
                 self.table_left.attach(frame2, 1, row, 1, 1)
 
@@ -333,14 +334,15 @@ class PokerInterface(Gtk.Window):
 
     def create_table_right(self):
         table = Gtk.Grid()
+        table.get_style_context().add_class("glass-panel")
 
         # Überschrift "Infos" über beide Spalten
         header_label = Gtk.Label(label="Infos")
         header_label.set_xalign(0.5)
         header_frame = Gtk.Frame()
         header_frame.add(header_label)
-        header_frame.get_style_context().add_class("table-cell")
-        header_frame.get_style_context().add_class("red-text")
+        header_frame.get_style_context().add_class("table-cell-transparent")
+        header_frame.get_style_context().add_class("primary-text")
         table.attach(header_frame, 0, 0, 2, 1)
 
         # Zeile für den Spielernamen
@@ -348,7 +350,7 @@ class PokerInterface(Gtk.Window):
         self.player_name_label.set_xalign(0.5)
         name_frame = Gtk.Frame()
         name_frame.add(self.player_name_label)
-        name_frame.get_style_context().add_class("table-cell")
+        name_frame.get_style_context().add_class("table-cell-transparent")
         table.attach(name_frame, 0, 1, 2, 1)
 
         # Weitere Infos: Hier fügen wir "Spielzeit" hinzu
@@ -368,15 +370,15 @@ class PokerInterface(Gtk.Window):
             label_title.set_margin_left(6)
             label_time.set_xalign(1.0)
             label_time.set_margin_right(6)
-            label_title.get_style_context().add_class("green-text")
-            label_time.get_style_context().add_class("green-text")
+            label_title.get_style_context().add_class("accent-text")
+            label_time.get_style_context().add_class("accent-text")
             self.info_labels[title] = label_time  # Speichern in einem Dictionary
             frame_title = Gtk.Frame()
             frame_title.add(label_title)
-            frame_title.get_style_context().add_class("table-cell")
+            frame_title.get_style_context().add_class("table-cell-transparent")
             frame_time = Gtk.Frame()
             frame_time.add(label_time)
-            frame_time.get_style_context().add_class("table-cell")
+            frame_time.get_style_context().add_class("table-cell-transparent")
             table.attach(frame_title, 0, row, 1, 1)
             table.attach(frame_time, 1, row, 1, 1)
 
