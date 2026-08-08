@@ -122,7 +122,16 @@ class BlindAdjustmentWindow(Gtk.Window):
             renderer = Gtk.CellRendererText()
             renderer.set_property("font", "Arial 16")
             renderer.set_property("foreground", "white")
+            
+            # Die Beträge (Index 1 und 2) rechtsbündig ausrichten
+            if i > 0:
+                renderer.set_property("xalign", 1.0)
+                
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            # Damit die Ausrichtung auch im Header optisch passt, wenn möglich
+            if i > 0:
+                column.set_alignment(1.0)
+                
             column.set_min_width(140)
             self.treeview.append_column(column)
 

@@ -278,3 +278,44 @@ treeview header button {
     color: #D4AF37;
     font-size: 16px;
 }
+
+/* --- COMBOBOX --- */
+combobox button {
+    background-image: linear-gradient(to bottom, rgba(40,50,65,0.9), rgba(20,30,45,0.9));
+    color: white;
+    border: 1px solid rgba(212, 175, 55, 0.6);
+    border-radius: 12px;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+combobox button:active, combobox button:hover {
+    background-image: linear-gradient(to bottom, rgba(50,65,85,1.0), rgba(30,45,60,1.0));
+    border-color: #D4AF37;
+}
+combobox window.popup menu {
+    background-color: rgba(20,30,45,0.95);
+    border: 1px solid #D4AF37;
+    border-radius: 8px;
+}
+combobox window.popup menu menuitem {
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+combobox window.popup menu menuitem:hover {
+    background-color: rgba(212, 175, 55, 0.3);
+}
+
+/* --- SCROLLBAR --- */
+scrollbar, scrollbar slider {
+    min-width: 0px;
+    min-height: 0px;
+    background-color: transparent;
+    border: none;
+    background-image: none;
+}
+scrollbar.vertical {
+    min-width: 0px;
+}
