@@ -126,9 +126,11 @@ class PokerInterface(Gtk.Window):
         self.welcome_container.show_all()  # WICHTIG: Widget sichtbar machen
 
     def open_virtual_keyboard(self, button):
+        import socket
         current_text = button.get_label()
         if current_text == "Platz nehmen":
-            current_text = ""
+            # Für Testzwecke: Den Hostnamen des Raspberry Pis als Standard eintragen
+            current_text = socket.gethostname()
         kbd = VirtualKeyboardWindow(self, current_text, self.on_keyboard_confirm)
         kbd.show_all()
 
