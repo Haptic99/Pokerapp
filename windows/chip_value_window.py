@@ -18,7 +18,7 @@ class ChipValueWindow(Gtk.Window):
     vom Admin-Panel (is_admin=True) aufgerufen werden."""
 
     def __init__(self, parent, is_admin=False):
-        title = "Chipwerte Verwaltung (Admin)" if is_admin else "Chipwerte Übersicht"
+        title = "Chipwerte Verwaltung" if is_admin else "Chipwerte Übersicht"
         super().__init__(title=title)
 
         self.set_default_size(800, 480)
@@ -67,7 +67,7 @@ class ChipValueWindow(Gtk.Window):
         glass_panel.get_style_context().add_class("glass-panel")
         
         # Title
-        title_text = "Chipwerte Verwaltung (Admin)" if self.is_admin else "Chipwerte Übersicht"
+        title_text = "Chipwerte Verwaltung" if self.is_admin else "Chipwerte Übersicht"
         title_label = Gtk.Label(label=title_text)
         title_label.get_style_context().add_class("time-title")
         glass_panel.pack_start(title_label, False, False, 5)
@@ -362,7 +362,8 @@ class ChipValueWindow(Gtk.Window):
                     "chip_values": ChipData.chf_values
                 }
                 await websocket.send(json.dumps(message))
-                GLib.idle_add(lambda: self.status_label.set_text(f"Gesendet: Chip-Werte an {server_ip}:{server_port}"))
+                # Erfolgsmeldung auf dem Bildschirm ausgeblendet (wird nur unsichtbar zurückgesetzt)
+                GLib.idle_add(lambda: self.status_label.set_text(""))
         except Exception as e:
             error_msg = f"Fehler beim Senden der Chip-Werte: {e}"
             print(error_msg)
